@@ -139,3 +139,33 @@ adminRouter.post('/fees',roles('school_admin'),wrap(async(req,res)=>{
  if(!rows.length)return error(res,404,'Ardayga lama helin');
  res.status(201).json({payment:rows[0]});
 }));
+
+const staffInput=z.object({email:z.string().email().max(254),fullName:z.string().trim().min(2).max(200),password:z.string().min(12).max(128),role:z.enum(['school_admin','exam_officer','teacher'])});
+adminRouter.get('/staff',roles('school_admin'),wrap(async(req,res)=>{
+ const {rows}=await pool.query(`SELECT u.id,u.email,u.full_name,m.role,m.is_active FROM school_memberships m JOIN users u ON u.id=m.user_id WHERE m.school_id=$1 ORDER BY u.full_name`,[req.schoolId]);
+ res.json({staff:rows});
+}));
+adminRouter.post('/staff',roles('school_admin'),wrap(async(req,res)=>{
+ const parsed=staffInput.safeParse(req.body);if(!parsed.success)return error(res,400,'Xogta shaqaalaha sax ma aha');
+ const {email,fullName,password,role}=parsed.data;
+ const hash=await bcrypt.hash(password,12);
+ const client=await pool.connect();
+ try{
+  await client.query('BEGIN');
+  const existing=await client.query('SELECT id FROM users WHERE lower(email)=lower($1)',[email]);
+  if(existing.rows.length){await client.query('ROLLBACK');return error(res,409,'Iimaylkan hore ayaa loo diiwaangeliyey')}
+  const user=(await client.query('INSERT INTO users(email,password_hash,full_name) VALUES(lower($1),$2,$3) RETURNING id,email,full_name',[email,hash,fullName])).rows[0];
+  await client.query('INSERT INTO school_memberships(school_id,user_id,role) VALUES($1,$2,$3)',[req.schoolId,user.id,role]);
+  await client.query('COMMIT');
+  res.status(201).json({staff:{...user,role,is_active:true}});
+ }catch(e){await client.query('ROLLBACK');throw e}finally{client.release()}
+}));
+adminRouter.patch('/staff/:userId',roles('school_admin'),wrap(async(req,res)=>{
+ const id=uuid.safeParse(req.params.userId);
+ const input=z.object({role:z.enum(['school_admin','exam_officer','teacher']).optional(),isActive:z.boolean().optional()}).refine(x=>x.role!==undefined||x.isActive!==undefined).safeParse(req.body);
+ if(!id.success||!input.success)return error(res,400,'Xogta shaqaalaha sax ma aha');
+ if(id.data===req.userId&&input.data.isActive===false)return error(res,409,'Naftaada ma joojin kartid');
+ const {rows}=await pool.query('UPDATE school_memberships SET role=COALESCE($3,role),is_active=COALESCE($4,is_active) WHERE school_id=$1 AND user_id=$2 RETURNING user_id,role,is_active',[req.schoolId,id.data,input.data.role??null,input.data.isActive??null]);
+ if(!rows.length)return error(res,404,'Shaqaalaha lama helin');
+ res.json({staff:rows[0]});
+}));
