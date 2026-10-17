@@ -44,7 +44,7 @@ export function LiveLogin(){
  if(logged)return <AdminDashboard session={logged} onLogout={()=>setLogged(null)}/>;
  return <Frame school={school} title="Galitaanka Maamulka" subtitle="Geli iimaylka iyo furaha sirta ee iskuulkaaga.">
  {schoolError&&<div className="notice" role="alert">{schoolError}</div>}
- <form onSubmit={submit}><label>Cinwaanka Iimaylka<input type="email" autoComplete="username" required value={email} onChange={e=>setEmail(e.target.value)} placeholder="magac@iskuul.com"/></label><label>Furaha Sirta<input type="password" autoComplete="current-password" required value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••••"/></label><button className="primary full" disabled={busy||!school}>{busy?'Fadlan sug...':'Soo Gal'} <LockKeyhole size={17}/></button>{error&&<div className="notice" role="alert">{error}</div>}</form>}
+ <form onSubmit={submit}><label>Cinwaanka Iimaylka<input type="email" autoComplete="username" required value={email} onChange={e=>setEmail(e.target.value)} placeholder="magac@iskuul.com"/></label><label>Furaha Sirta<input type="password" autoComplete="current-password" required value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••••"/></label><button className="primary full" disabled={busy||!school}>{busy?'Fadlan sug...':'Soo Gal'} <LockKeyhole size={17}/></button>{error&&<div className="notice" role="alert">{error}</div>}</form>
  </Frame>;
 }
 export function LiveResults(){
