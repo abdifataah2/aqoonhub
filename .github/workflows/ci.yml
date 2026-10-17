@@ -59,3 +59,4 @@ jobs:
           node src/index.js &
           for i in $(seq 1 30); do if curl -fsS http://localhost:4000/api/health >/dev/null; then break; fi; sleep 1; done
           node src/smoke-test.js
+          node src/integration-test.js
