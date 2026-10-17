@@ -7,6 +7,7 @@ export function AdminDashboard({session,onLogout}:{session:LoginReply;onLogout:(
  const {slug}=useParams();const [data,setData]=React.useState<Data|null>(null);
  const [error,setError]=React.useState('');const [message,setMessage]=React.useState('');
  const [busy,setBusy]=React.useState(false);
+ const logoutRef=React.useRef(onLogout);logoutRef.current=onLogout;
  const [section,setSection]=React.useState<'classes'|'students'|'subjects'|'exams'|'attendance'|'fees'>('classes');
  const [date,setDate]=React.useState(new Date().toISOString().slice(0,10));const [attendanceStatus,setAttendanceStatus]=React.useState('present');
  const [amount,setAmount]=React.useState('');const [currency,setCurrency]=React.useState('USD');const [reference,setReference]=React.useState('');
@@ -20,10 +21,10 @@ export function AdminDashboard({session,onLogout}:{session:LoginReply;onLogout:(
  const api=React.useCallback(async(path:string,init?:RequestInit)=>{
   const response=await fetch(base(slug||'')+path,{...init,headers:{'Content-Type':'application/json',Authorization:`Bearer ${session.token}`,...init?.headers},cache:'no-store'});
   const body=await response.json().catch(()=>({}));
-  if(response.status===401){onLogout();throw new Error('Fadhigaagu wuu dhacay; fadlan mar kale soo gal')}
+  if(response.status===401){logoutRef.current();throw new Error('Fadhigaagu wuu dhacay; fadlan mar kale soo gal')}
   if(!response.ok)throw new Error(body.error||'Codsiga wuu fashilmay');
   return body;
- },[slug,session.token,onLogout]);
+ },[slug,session.token]);
  const refresh=React.useCallback(async()=>{
   const [a,b,c,d,e]=await Promise.all([api('/summary'),api('/classes'),session.user.role==='teacher'?Promise.resolve({students:[]}):api('/students'),api('/subjects'),api('/exams')]);
   setData({summary:a.summary,classes:b.classes,students:c.students,subjects:d.subjects,exams:e.exams});
