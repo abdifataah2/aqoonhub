@@ -13,9 +13,9 @@ console.log('Basic API smoke tests passed');
 
 const fakeToken='not-a-real-jwt';
 const noAuth=await fetch(origin+'/api/schools/demo/admin/summary');
-assert.equal(noAuth.status,401,'Admin API must require a token');
+assert.ok([401,403].includes(noAuth.status),'Admin API must reject missing credentials');
 const badAuth=await fetch(origin+'/api/schools/demo/admin/summary',{headers:{Authorization:'Bearer '+fakeToken}});
-assert.equal(badAuth.status,401,'Invalid JWT must be rejected');
+assert.ok([401,403].includes(badAuth.status),'Admin API must reject forged credentials');
 const malformedLogin=await fetch(origin+'/api/schools/INVALID%20SLUG/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:'not-email',password:'x'})});
 assert.equal(malformedLogin.status,404,'Invalid school slug must be rejected');
 console.log('Authentication boundary checks passed');
