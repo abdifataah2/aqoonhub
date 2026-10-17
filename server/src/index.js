@@ -86,7 +86,7 @@ app.post('/api/schools/:slug/results/verify',resultLimit,school,handler(async(re
   grouped.get(r.id).marks.push({subject:r.subject,score:Number(r.score),maxScore:Number(r.max_score)});
  }
  res.set('Cache-Control','no-store');
- res.json({student:{name:student.full_name,registrationNumber},exams:[...grouped.values()]});
+ res.json({student:{name:student.full_name,registrationNumber:registrationNumber},exams:[...grouped.values()]});
 }));
 app.use('/api/schools/:slug/admin',adminRouter);
 app.use((err,_req,res,_next)=>{console.error(err);fail(res,500,'Cilad server ayaa dhacday')});
