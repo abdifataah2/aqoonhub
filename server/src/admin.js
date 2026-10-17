@@ -169,3 +169,8 @@ adminRouter.patch('/staff/:userId',roles('school_admin'),wrap(async(req,res)=>{
  if(!rows.length)return error(res,404,'Shaqaalaha lama helin');
  res.json({staff:rows[0]});
 }));
+
+adminRouter.get('/audit',roles('school_admin'),wrap(async(req,res)=>{
+ const {rows}=await pool.query('SELECT id,actor_user_id,action,entity_type,entity_id,created_at FROM audit_events WHERE school_id=$1 ORDER BY created_at DESC LIMIT 200',[req.schoolId]);
+ res.json({events:rows});
+}));
