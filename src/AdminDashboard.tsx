@@ -23,9 +23,9 @@ export function AdminDashboard({session,onLogout}:{session:LoginReply;onLogout:(
   return body;
  },[slug,session.token,onLogout]);
  const refresh=React.useCallback(async()=>{
-  const [a,b,c,d,e]=await Promise.all(['/summary','/classes','/students','/subjects','/exams'].map(p=>api(p)));
+  const [a,b,c,d,e]=await Promise.all([api('/summary'),api('/classes'),session.user.role==='teacher'?Promise.resolve({students:[]}):api('/students'),api('/subjects'),api('/exams')]);
   setData({summary:a.summary,classes:b.classes,students:c.students,subjects:d.subjects,exams:e.exams});
- },[api]);
+ },[api,session.user.role]);
  React.useEffect(()=>{refresh().catch(e=>setError(e.message))},[refresh]);
  async function send(path:string,body?:object){
   setBusy(true);setError('');setMessage('');
@@ -43,11 +43,11 @@ export function AdminDashboard({session,onLogout}:{session:LoginReply;onLogout:(
  {section==='students'&&<><h2>Ardayda</h2>{data.students.map(s=><p key={s.id}>{s.registration_number} — {s.full_name}</p>)}{isAdmin&&<form onSubmit={e=>{e.preventDefault();send('/students',{classId,registrationNumber:registration,fullName:name,resultPin:pin})}}><label>Fasalka<select required value={classId} onChange={e=>setClassId(e.target.value)}><option value="">Dooro fasal</option>{data.classes.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label><label>Lambarka diiwaangelinta<input required value={registration} onChange={e=>setRegistration(e.target.value)}/></label><label>Magaca ardayga<input required value={name} onChange={e=>setName(e.target.value)}/></label><label>PIN gaar ah (ugu yaraan 6 xaraf)<input type="password" minLength={6} required value={pin} onChange={e=>setPin(e.target.value)}/></label><button className="primary" disabled={busy}>Diiwaangeli arday</button></form>}</>}
  {section==='subjects'&&<><h2>Maaddooyinka</h2>{data.subjects.map(s=><p key={s.id}>{s.name}</p>)}{isAdmin&&<form onSubmit={e=>{e.preventDefault();send('/subjects',{name})}}><label>Magaca maaddada<input required value={name} onChange={e=>setName(e.target.value)}/></label><button className="primary" disabled={busy}>Ku dar maaddo</button></form>}</>}
  {section==='exams'&&<><h2>Imtixaannada</h2>{data.exams.map(ex=><p key={ex.id}>{ex.title} — {ex.status} {canExam&&ex.status==='draft'&&<button disabled={busy} onClick={()=>send(`/exams/${ex.id}/submit`)}>Gudbi review</button>} {canExam&&ex.status==='review'&&<button disabled={busy} onClick={()=>send(`/exams/${ex.id}/publish`)}>Daabac</button>}</p>)}{canExam&&<form onSubmit={e=>{e.preventDefault();send('/exams',{classId,title:name,academicYear:year})}}><label>Fasalka<select required value={classId} onChange={e=>setClassId(e.target.value)}><option value="">Dooro fasal</option>{data.classes.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label><label>Magaca imtixaanka<input required value={name} onChange={e=>setName(e.target.value)}/></label><label>Sanad dugsiyeed<input required value={year} onChange={e=>setYear(e.target.value)}/></label><button className="primary" disabled={busy}>Abuur imtixaan</button></form>}
- <h3>Geli dhibcaha imtixaan draft ah</h3><form onSubmit={e=>{e.preventDefault();send(`/exams/${examId}/marks`,{studentId,subjectId,score:Number(score),maxScore:Number(maxScore)})}}>
+ {canExam&&<><h3>Geli dhibcaha imtixaan draft ah</h3><form onSubmit={e=>{e.preventDefault();send(`/exams/${examId}/marks`,{studentId,subjectId,score:Number(score),maxScore:Number(maxScore)})}}>
  <label>Imtixaanka<select required value={examId} onChange={e=>setExamId(e.target.value)}><option value="">Dooro imtixaan</option>{data.exams.filter(e=>e.status==='draft').map(e=><option key={e.id} value={e.id}>{e.title}</option>)}</select></label>
  <label>Ardayga<select required value={studentId} onChange={e=>setStudentId(e.target.value)}><option value="">Dooro arday</option>{data.students.map(s=><option key={s.id} value={s.id}>{s.full_name}</option>)}</select></label>
  <label>Maaddada<select required value={subjectId} onChange={e=>setSubjectId(e.target.value)}><option value="">Dooro maaddo</option>{data.subjects.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
- <label>Dhibcaha<input type="number" min="0" step="0.01" required value={score} onChange={e=>setScore(e.target.value)}/></label><label>Dhibcaha ugu badan<input type="number" min="0.01" step="0.01" required value={maxScore} onChange={e=>setMaxScore(e.target.value)}/></label><button className="primary" disabled={busy}>Kaydi dhibcaha</button></form></>}
+ <label>Dhibcaha<input type="number" min="0" step="0.01" required value={score} onChange={e=>setScore(e.target.value)}/></label><label>Dhibcaha ugu badan<input type="number" min="0.01" step="0.01" required value={maxScore} onChange={e=>setMaxScore(e.target.value)}/></label><button className="primary" disabled={busy}>Kaydi dhibcaha</button></form></>}</>}
  </>:<p>Waa la soo rarayaa xogta...</p>}
  </div></main>;
 }
