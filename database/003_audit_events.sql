@@ -30,6 +30,7 @@ BEGIN
   actor:=NULLIF(current_setting('aqoonhub.actor_user_id',true),'')::uuid;
  EXCEPTION WHEN invalid_text_representation THEN actor:=NULL;
  END;
+ IF TG_OP='DELETE' AND NOT EXISTS(SELECT 1 FROM schools WHERE id=sid) THEN RETURN OLD; END IF;
  INSERT INTO audit_events(school_id,actor_user_id,action,entity_type,entity_id)
  VALUES(sid,actor,TG_OP,TG_TABLE_NAME,obj);
  RETURN COALESCE(NEW,OLD);
