@@ -6,6 +6,7 @@ import jwt from 'jsonwebtoken';
 import {rateLimit} from 'express-rate-limit';
 import {z} from 'zod';
 import {pool} from './db.js';
+import {adminRouter} from './admin.js';
 
 if(!process.env.JWT_SECRET || process.env.JWT_SECRET.length<32) throw new Error('JWT_SECRET must be at least 32 characters');
 const app=express();
@@ -87,5 +88,6 @@ app.post('/api/schools/:slug/results/verify',resultLimit,school,handler(async(re
  res.set('Cache-Control','no-store');
  res.json({student:{name:student.full_name,registrationNumber},exams:[...grouped.values()]});
 }));
+app.use('/api/schools/:slug/admin',adminRouter);
 app.use((err,_req,res,_next)=>{console.error(err);fail(res,500,'Cilad server ayaa dhacday')});
 app.listen(Number(process.env.PORT||4000),()=>console.log('AqoonHub API listening'));
