@@ -36,10 +36,21 @@ try{
  const ownClasses=await fetch(origin+'/api/schools/'+a+'/admin/classes',{headers:{Authorization:'Bearer '+token}});
  assert.equal(ownClasses.status,200);
  assert.ok((await ownClasses.json()).classes.some(x=>x.id===klass.data.class.id));
- console.log('Login, password, authorization, tenant isolation and class creation passed');
+
+ const staff=await call('/api/schools/'+a+'/admin/staff',{email:'staff-'+suffix+'@example.test',fullName:'Test Teacher',password,role:'teacher'},token);
+ assert.equal(staff.status,201,'admin should create teacher');
+ const staffLogin=await call('/api/schools/'+a+'/login',{email:'staff-'+suffix+'@example.test',password});
+ assert.equal(staffLogin.status,200,'teacher can login');
+ const forbidden=await call('/api/schools/'+a+'/admin/classes',{name:'Forbidden',academicYear:'2026'},staffLogin.data.token);
+ assert.equal(forbidden.status,403,'teacher must not create classes');
+ const deactivate=await fetch(origin+'/api/schools/'+a+'/admin/staff/'+staff.data.staff.id,{method:'PATCH',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({isActive:false})});
+ assert.equal(deactivate.status,200,'admin can deactivate staff');
+ const revoked=await fetch(origin+'/api/schools/'+a+'/admin/summary',{headers:{Authorization:'Bearer '+staffLogin.data.token}});
+ assert.equal(revoked.status,403,'deactivated staff token must be denied');
+ console.log('Login, authorization, tenant isolation, staff permissions and revocation passed');
 }finally{
  if(schoolA)await pool.query('DELETE FROM schools WHERE id=$1',[schoolA]);
  if(schoolB)await pool.query('DELETE FROM schools WHERE id=$1',[schoolB]);
- await pool.query('DELETE FROM users WHERE email=$1',['ci-'+suffix+'@example.test']);
+ await pool.query('DELETE FROM users WHERE email=ANY($1)',[['ci-'+suffix+'@example.test','staff-'+suffix+'@example.test']]);
  await pool.end();
 }
