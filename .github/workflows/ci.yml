@@ -54,6 +54,7 @@ jobs:
         run: |
           PGPASSWORD=test_password_only psql -h localhost -U aqoonhub -d aqoonhub_test -v ON_ERROR_STOP=1 -f database/001_initial_schema.sql
           PGPASSWORD=test_password_only psql -h localhost -U aqoonhub -d aqoonhub_test -v ON_ERROR_STOP=1 -f database/002_attendance_fees.sql
+          PGPASSWORD=test_password_only psql -h localhost -U aqoonhub -d aqoonhub_test -v ON_ERROR_STOP=1 -f database/003_audit_events.sql
       - name: API smoke test
         run: |
           node src/index.js &
