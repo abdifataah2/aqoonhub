@@ -108,10 +108,10 @@ adminRouter.post('/exams/:examId/publish',roles('school_admin','exam_officer'),w
  res.json({exam:rows[0]});
 }));
 
-const attendanceInput=z.object({studentId:uuid,date:z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/),status:z.enum(['present','absent','late','excused'])});
-const feeInput=z.object({studentId:uuid,amount:z.number().positive().max(999999999),currency:z.enum(['USD','SOS']),reference:z.string().trim().min(1).max(120),paidOn:z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/)});
+const attendanceInput=z.object({studentId:uuid,date:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),status:z.enum(['present','absent','late','excused'])});
+const feeInput=z.object({studentId:uuid,amount:z.number().positive().max(999999999),currency:z.enum(['USD','SOS']),reference:z.string().trim().min(1).max(120),paidOn:z.string().regex(/^\d{4}-\d{2}-\d{2}$/)});
 adminRouter.get('/attendance',roles('school_admin','exam_officer'),wrap(async(req,res)=>{
- const date=z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/).safeParse(req.query.date);
+ const date=z.string().regex(/^\d{4}-\d{2}-\d{2}$/).safeParse(req.query.date);
  if(!date.success)return error(res,400,'Taariikh sax ah ayaa loo baahan yahay');
  const {rows}=await pool.query('SELECT a.student_id,a.attendance_date,a.status,st.full_name FROM attendance a JOIN students st ON st.school_id=a.school_id AND st.id=a.student_id WHERE a.school_id=$1 AND a.attendance_date=$2 ORDER BY st.full_name LIMIT 500',[req.schoolId,date.data]);
  res.json({attendance:rows});
