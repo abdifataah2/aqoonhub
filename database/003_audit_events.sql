@@ -16,6 +16,12 @@ BEGIN
  IF TG_TABLE_NAME='school_memberships' THEN
   sid:=COALESCE(NEW.school_id,OLD.school_id);
   obj:=COALESCE(NEW.user_id,OLD.user_id);
+ ELSIF TG_TABLE_NAME='exam_marks' THEN
+  sid:=COALESCE(NEW.school_id,OLD.school_id);
+  obj:=COALESCE(NEW.exam_id,OLD.exam_id);
+ ELSIF TG_TABLE_NAME='attendance' THEN
+  sid:=COALESCE(NEW.school_id,OLD.school_id);
+  obj:=COALESCE(NEW.student_id,OLD.student_id);
  ELSE
   sid:=COALESCE(NEW.school_id,OLD.school_id);
   obj:=COALESCE(NEW.id,OLD.id);
