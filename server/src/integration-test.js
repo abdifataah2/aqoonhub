@@ -47,7 +47,23 @@ try{
  assert.equal(deactivate.status,200,'admin can deactivate staff');
  const revoked=await fetch(origin+'/api/schools/'+a+'/admin/summary',{headers:{Authorization:'Bearer '+staffLogin.data.token}});
  assert.equal(revoked.status,403,'deactivated staff token must be denied');
- console.log('Login, authorization, tenant isolation, staff permissions and revocation passed');
+
+ const student=await call('/api/schools/'+a+'/admin/students',{classId:klass.data.class.id,registrationNumber:'REG-'+suffix,fullName:'Test Student',resultPin:'12345678'},token);
+ assert.equal(student.status,201,'student registration should work');
+ const attendance=await call('/api/schools/'+a+'/admin/attendance',{studentId:student.data.student.id,date:'2026-10-17',status:'present'},token);
+ assert.equal(attendance.status,200,'attendance should be recorded');
+ const attendanceList=await fetch(origin+'/api/schools/'+a+'/admin/attendance?date=2026-10-17',{headers:{Authorization:'Bearer '+token}});
+ assert.equal(attendanceList.status,200);
+ assert.ok((await attendanceList.json()).attendance.some(x=>x.student_id===student.data.student.id));
+ const fee=await call('/api/schools/'+a+'/admin/fees',{studentId:student.data.student.id,amount:20,currency:'USD',reference:'TEST-'+suffix,paidOn:'2026-10-17'},token);
+ assert.equal(fee.status,201,'payment should be recorded');
+ const fees=await fetch(origin+'/api/schools/'+a+'/admin/fees',{headers:{Authorization:'Bearer '+token}});
+ assert.equal(fees.status,200);
+ assert.ok((await fees.json()).payments.some(x=>x.id===fee.data.payment.id));
+ const audit=await fetch(origin+'/api/schools/'+a+'/admin/audit',{headers:{Authorization:'Bearer '+token}});
+ assert.equal(audit.status,200);
+ assert.ok((await audit.json()).events.some(x=>x.entity_type==='students'),'student changes should be audited');
+ console.log('Login, tenant isolation, staff, attendance, payments and audit checks passed');
 }finally{
  if(schoolA)await pool.query('DELETE FROM schools WHERE id=$1',[schoolA]);
  if(schoolB)await pool.query('DELETE FROM schools WHERE id=$1',[schoolB]);
