@@ -1,3 +1,4 @@
+import {AdminDashboard} from './AdminDashboard';
 import React from 'react';
 import {Link,useParams} from 'react-router-dom';
 import {ArrowLeft,ArrowRight,GraduationCap,LockKeyhole,FileText} from 'lucide-react';
@@ -40,6 +41,7 @@ export function LiveLogin(){
   try{const data=await request<LoginReply>(`/api/schools/${encodeURIComponent(slug)}/login`,{method:'POST',body:JSON.stringify({email,password})});setLogged(data);setPassword('')}
   catch(err){setError(errorText(err))}finally{setBusy(false)}
  }
+ if(logged)return <AdminDashboard session={logged} onLogout={()=>setLogged(null)}/>;
  return <Frame school={school} title="Galitaanka Maamulka" subtitle="Geli iimaylka iyo furaha sirta ee iskuulkaaga.">
  {schoolError&&<div className="notice" role="alert">{schoolError}</div>}
  {logged?<div role="status"><h2>Ku soo dhowow, {logged.user.name}</h2><p>Waad soo gashay ({logged.user.role}). Backend-ka ayaa xaqiijiyey koontadaada.</p><div className="notice">Dashboard-ka shaqaalaha iyo maamulka xogta weli waa la dhisayaa. Hadda ha gelin xog dhab ah.</div><button className="primary full" onClick={()=>setLogged(null)}>Ka bax</button></div>:
