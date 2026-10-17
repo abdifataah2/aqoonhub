@@ -47,7 +47,7 @@ adminRouter.post('/classes',roles('school_admin'),wrap(async(req,res)=>{
  const {rows}=await pool.query('INSERT INTO classes(school_id,name,academic_year) VALUES($1,$2,$3) RETURNING id,name,academic_year',[req.schoolId,data.data.name,data.data.academicYear]);
  res.status(201).json({class:rows[0]});
 }));
-adminRouter.get('/students',wrap(async(req,res)=>{
+adminRouter.get('/students',roles('school_admin','exam_officer'),wrap(async(req,res)=>{
  const {rows}=await pool.query('SELECT id,class_id,registration_number,full_name,is_active FROM students WHERE school_id=$1 ORDER BY registration_number LIMIT 200',[req.schoolId]);
  res.json({students:rows});
 }));
@@ -77,7 +77,7 @@ adminRouter.post('/exams',roles('school_admin','exam_officer'),wrap(async(req,re
  const {rows}=await pool.query('INSERT INTO exams(school_id,class_id,title,academic_year) VALUES($1,$2,$3,$4) RETURNING id,class_id,title,academic_year,status',[req.schoolId,data.data.classId,data.data.title,data.data.academicYear]);
  res.status(201).json({exam:rows[0]});
 }));
-adminRouter.post('/exams/:examId/marks',roles('school_admin','exam_officer','teacher'),wrap(async(req,res)=>{
+adminRouter.post('/exams/:examId/marks',roles('school_admin','exam_officer'),wrap(async(req,res)=>{
  const id=uuid.safeParse(req.params.examId),data=markInput.safeParse(req.body);
  if(!id.success||!data.success)return error(res,400,'Dhibcaha ama aqoonsiga sax ma aha');
  const {studentId,subjectId,score,maxScore}=data.data;
