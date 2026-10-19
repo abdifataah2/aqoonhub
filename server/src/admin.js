@@ -10,7 +10,7 @@ const wrap=fn=>(req,res,next)=>Promise.resolve(fn(req,res,next)).catch(next);
 const error=(res,status,message)=>res.status(status).json({error:message});
 const uuid=z.string().uuid();
 const classInput=z.object({name:z.string().trim().min(1).max(100),academicYear:z.string().trim().min(1).max(30)});
-const studentInput=z.object({classId:uuid,registrationNumber:z.string().trim().min(1).max(100),fullName:z.string().trim().min(1).max(200),resultPin:z.string().min(6).max(128)});
+const studentInput=z.object({classId:uuid,registrationNumber:z.string().trim().min(1).max(100),fullName:z.string().trim().min(1).max(200),resultPin:z.string().min(6).max(128).optional()});
 const subjectInput=z.object({name:z.string().trim().min(1).max(100)});
 const examInput=z.object({classId:uuid,title:z.string().trim().min(1).max(200),academicYear:z.string().trim().min(1).max(30)});
 const markInput=z.object({studentId:uuid,subjectId:uuid,score:z.number().finite().min(0),maxScore:z.number().finite().positive()}).refine(x=>x.score<=x.maxScore);
@@ -55,7 +55,7 @@ adminRouter.get('/students',roles('school_admin','exam_officer','teacher'),wrap(
 adminRouter.post('/students',roles('school_admin'),wrap(async(req,res)=>{
  const data=studentInput.safeParse(req.body);if(!data.success)return error(res,400,'Xogta ardayga sax ma aha; PIN-ku waa inuu leeyahay ugu yaraan 6 xaraf');
  const {classId,registrationNumber,fullName,resultPin}=data.data;
- const hash=await bcrypt.hash(resultPin,12);
+ const hash=await bcrypt.hash(resultPin||crypto.randomUUID(),12);
  const {rows}=await pool.query(`INSERT INTO students(school_id,class_id,registration_number,full_name,result_pin_hash)
  VALUES($1,$2,$3,$4,$5) RETURNING id,class_id,registration_number,full_name`,[req.schoolId,classId,registrationNumber,fullName,hash]);
  res.status(201).json({student:rows[0]});
