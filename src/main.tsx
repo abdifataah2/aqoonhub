@@ -1,8 +1,9 @@
+import {apiUrl} from './apiUrl';
 import {LiveLogin,LiveResults} from './LivePages';
 import {PlatformAdmin} from './PlatformAdmin';
 import React from 'react';import{createRoot}from'react-dom/client';import{BrowserRouter,Link,useParams,Navigate}from'react-router-dom';import{Routes,Route}from'react-router-dom';import{GraduationCap,School,ShieldCheck,Search,ArrowRight,Users,BookOpen,ClipboardCheck,Wallet,LayoutDashboard,Settings,LogIn,FileText,Menu,X,LockKeyhole}from'lucide-react';import './style.css';
 type SchoolInfo={slug:string,name:string,initials:string,color:string,students:number,teachers:number};
-function useSchools(){const [items,setItems]=React.useState<SchoolInfo[]>([]);React.useEffect(()=>{let live=true;fetch('/api/schools').then(r=>{if(!r.ok)throw new Error('API unavailable');return r.json()}).then((data:{schools:{slug:string;name:string;brand_color:string}[]})=>{if(live)setItems(data.schools.map(s=>({slug:s.slug,name:s.name,initials:s.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase(),color:s.brand_color||'#2563eb',students:0,teachers:0}))) }).catch(()=>{});return()=>{live=false}},[]);return items}
+function useSchools(){const [items,setItems]=React.useState<SchoolInfo[]>([]);React.useEffect(()=>{let live=true;fetch(apiUrl('/api/schools')).then(r=>{if(!r.ok)throw new Error('API unavailable');return r.json()}).then((data:{schools:{slug:string;name:string;brand_color:string}[]})=>{if(live)setItems(data.schools.map(s=>({slug:s.slug,name:s.name,initials:s.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase(),color:s.brand_color||'#2563eb',students:0,teachers:0}))) }).catch(()=>{});return()=>{live=false}},[]);return items}
 
 function useSchool(){const{slug}=useParams();const schools=useSchools();return schools.find(s=>s.slug===slug)}
 function Brand({school}:{school?:SchoolInfo}){return <Link to={school?`/s/${school.slug}`:'/'} className="brand"><span className="brand-icon" style={{background:school?.color||'#2563eb'}}><GraduationCap size={24}/></span><span><b>{school?.name||'Somskill'}</b><small>{school?'Nidaamka Maamulka Iskuulka':'Nidaamka Casriga ah ee Iskuullada'}</small></span></Link>}
