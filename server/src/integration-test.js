@@ -86,6 +86,14 @@ try{
  assert.equal(studentLogin.status,200,'registration-only access works');
  const exam=await call('/api/schools/'+a+'/admin/exams',{classId:klass.data.class.id,title:'Final '+suffix,academicYear:'2026'},token);
  assert.equal(exam.status,201,'create exam');
+ const reactivate=await fetch(origin+'/api/schools/'+a+'/admin/staff/'+staff.data.staff.id,{method:'PATCH',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({isActive:true})});
+ assert.equal(reactivate.status,200,'admin can reactivate teacher');
+ const permittedMark=await call('/api/schools/'+a+'/admin/exams/'+exam.data.exam.id+'/marks',{studentId:student.data.student.id,subjectId:teacherSubject.data.subject.id,score:72,maxScore:100},staffLogin.data.token);
+ assert.equal(permittedMark.status,200,'assigned teacher can enter assigned subject marks');
+ const forbiddenSubjectMark=await call('/api/schools/'+a+'/admin/exams/'+exam.data.exam.id+'/marks',{studentId:student.data.student.id,subjectId:subject.data.subject.id,score:72,maxScore:100},staffLogin.data.token);
+ assert.equal(forbiddenSubjectMark.status,409,'teacher cannot mark unassigned subject');
+ const disableAgain=await fetch(origin+'/api/schools/'+a+'/admin/staff/'+staff.data.staff.id,{method:'PATCH',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({isActive:false})});
+ assert.equal(disableAgain.status,200);
  const teacherMark=await call('/api/schools/'+a+'/admin/exams/'+exam.data.exam.id+'/marks',{studentId:student.data.student.id,subjectId:teacherSubject.data.subject.id,score:70,maxScore:100},staffLogin.data.token);
  assert.equal(teacherMark.status,403,'deactivated teacher cannot enter marks');
  const importedTeacherUnassigned=await call('/api/schools/'+a+'/admin/exams/'+exam.data.exam.id+'/marks',{studentId:student.data.student.id,subjectId:teacherSubject.data.subject.id,score:70,maxScore:100},excelTeacherLogin.data.token);
