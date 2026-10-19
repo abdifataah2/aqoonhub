@@ -27,7 +27,7 @@ BEGIN
   obj:=COALESCE(NEW.id,OLD.id);
  END IF;
  BEGIN
-  actor:=NULLIF(current_setting('aqoonhub.actor_user_id',true),'')::uuid;
+  actor:=NULLIF(current_setting('somskill.actor_user_id',true),'')::uuid;
  EXCEPTION WHEN invalid_text_representation THEN actor:=NULL;
  END;
  IF TG_OP='DELETE' AND NOT EXISTS(SELECT 1 FROM schools WHERE id=sid) THEN RETURN OLD; END IF;
