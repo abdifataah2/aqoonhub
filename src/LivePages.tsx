@@ -49,16 +49,16 @@ export function LiveLogin(){
 }
 export function LiveResults(){
  const {slug}=useParams();const {school,error:schoolError}=useSchoolInfo(slug);
- const [registrationNumber,setRegistrationNumber]=React.useState('');const [pin,setPin]=React.useState('');
+ const [registrationNumber,setRegistrationNumber]=React.useState('');
  const [busy,setBusy]=React.useState(false);const [error,setError]=React.useState('');
  const [result,setResult]=React.useState<ResultReply|null>(null);
  async function submit(e:React.FormEvent){e.preventDefault();if(!slug||busy)return;setBusy(true);setError('');setResult(null);
-  try{const data=await request<ResultReply>(`/api/schools/${encodeURIComponent(slug)}/results/verify`,{method:'POST',body:JSON.stringify({registrationNumber,pin})});setResult(data);setPin('')}
+  try{const data=await request<ResultReply>(`/api/schools/${encodeURIComponent(slug)}/student-login`,{method:'POST',body:JSON.stringify({registrationNumber})});setResult(data)}
   catch(err){setError(errorText(err))}finally{setBusy(false)}
  }
- return <Frame school={school} title="Hubinta Natiijada" subtitle="Geli lambarka diiwaangelinta iyo koodhkaaga gaarka ah.">
+ return <Frame school={school} title="Hubinta Natiijada" subtitle="Geli Reg-Number-kaaga si aad u aragto natiijooyinka la daabacay.">
  {schoolError&&<div className="notice" role="alert">{schoolError}</div>}
- <form onSubmit={submit}><label>Lambarka Diiwaangelinta<input required value={registrationNumber} onChange={e=>setRegistrationNumber(e.target.value)} placeholder="Tusaale: 2026-001"/></label><label>Koodhka Natiijada<input required type="password" autoComplete="off" value={pin} onChange={e=>setPin(e.target.value)} placeholder="Geli koodhkaaga"/></label><button className="primary full" disabled={busy||!school}>{busy?'Fadlan sug...':'Eeg Natiijada'} <FileText size={17}/></button>{error&&<div className="notice" role="alert">{error}</div>}</form>
+ <form onSubmit={submit}><label>Lambarka Diiwaangelinta<input required value={registrationNumber} onChange={e=>setRegistrationNumber(e.target.value)} placeholder="Tusaale: 2026-001"/></label><button className="primary full" disabled={busy||!school}>{busy?'Fadlan sug...':'Eeg Natiijada'} <FileText size={17}/></button>{error&&<div className="notice" role="alert">{error}</div>}</form>
  {result&&<section aria-live="polite"><h2>{result.student.name}</h2><p>Diiwaangelin: {result.student.registrationNumber}</p>{result.exams.map(exam=><div className="panel" key={exam.id}><h3>{exam.title} — {exam.academicYear}</h3><table style={{width:'100%',borderCollapse:'collapse'}}><thead><tr><th style={{textAlign:'left'}}>Maaddada</th><th>Dhibcaha</th></tr></thead><tbody>{exam.marks.map(m=><tr key={m.subject}><td>{m.subject}</td><td style={{textAlign:'center'}}>{m.score} / {m.maxScore}</td></tr>)}</tbody></table></div>)}<button className="primary full" type="button" onClick={()=>window.print()}>Daabac Natiijada <ArrowRight size={17}/></button></section>}
  </Frame>;
 }
