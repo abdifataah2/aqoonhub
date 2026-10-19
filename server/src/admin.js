@@ -356,3 +356,35 @@ adminRouter.post('/staff/import.xlsx',roles('school_admin'),wrap(async(req,res)=
  await client.query('COMMIT');res.status(201).json({added:parsed.data.length});
  }catch(e){await client.query('ROLLBACK');return error(res,409,e.message)}finally{client.release()}
 }));
+
+adminRouter.patch('/classes/:id',roles('school_admin'),wrap(async(req,res)=>{
+ const id=uuid.safeParse(req.params.id),p=classInput.partial().refine(x=>Object.keys(x).length>0).safeParse(req.body);
+ if(!id.success||!p.success)return error(res,400,'Xogta fasalka sax ma aha');
+ const {rows}=await pool.query('UPDATE classes SET name=COALESCE($3,name),academic_year=COALESCE($4,academic_year) WHERE school_id=$1 AND id=$2 RETURNING id,name,academic_year',[req.schoolId,id.data,p.data.name??null,p.data.academicYear??null]);
+ if(!rows.length)return error(res,404,'Fasalka lama helin');res.json({class:rows[0]});
+}));
+adminRouter.delete('/classes/:id',roles('school_admin'),wrap(async(req,res)=>{
+ const id=uuid.safeParse(req.params.id);if(!id.success)return error(res,400,'Fasalka sax ma aha');
+ const {rows}=await pool.query('DELETE FROM classes c WHERE c.school_id=$1 AND c.id=$2 AND NOT EXISTS(SELECT 1 FROM students st WHERE st.school_id=c.school_id AND st.class_id=c.id) AND NOT EXISTS(SELECT 1 FROM exams e WHERE e.school_id=c.school_id AND e.class_id=c.id) RETURNING id',[req.schoolId,id.data]);
+ if(!rows.length)return error(res,409,'Fasalka lama helin ama arday/imtixaan ayuu leeyahay');res.json({deleted:true});
+}));
+adminRouter.patch('/subjects/:id',roles('school_admin'),wrap(async(req,res)=>{
+ const id=uuid.safeParse(req.params.id),p=subjectInput.safeParse(req.body);if(!id.success||!p.success)return error(res,400,'Maaddada sax ma aha');
+ const {rows}=await pool.query('UPDATE subjects SET name=$3 WHERE school_id=$1 AND id=$2 RETURNING id,name',[req.schoolId,id.data,p.data.name]);
+ if(!rows.length)return error(res,404,'Maaddada lama helin');res.json({subject:rows[0]});
+}));
+adminRouter.delete('/subjects/:id',roles('school_admin'),wrap(async(req,res)=>{
+ const id=uuid.safeParse(req.params.id);if(!id.success)return error(res,400,'Maaddada sax ma aha');
+ const {rows}=await pool.query('DELETE FROM subjects s WHERE s.school_id=$1 AND s.id=$2 AND NOT EXISTS(SELECT 1 FROM exam_marks m WHERE m.school_id=s.school_id AND m.subject_id=s.id) RETURNING id',[req.schoolId,id.data]);
+ if(!rows.length)return error(res,409,'Maaddada lama helin ama dhibco ayaa ku xiran');res.json({deleted:true});
+}));
+adminRouter.delete('/class-subjects',roles('school_admin'),wrap(async(req,res)=>{
+ const p=assignment.safeParse(req.body);if(!p.success)return error(res,400,'Fasalka ama maaddada sax ma aha');
+ const {rows}=await pool.query('DELETE FROM class_subjects WHERE school_id=$1 AND class_id=$2 AND subject_id=$3 RETURNING class_id',[req.schoolId,p.data.classId,p.data.subjectId]);
+ if(!rows.length)return error(res,404,'Qoondeynta lama helin');res.json({deleted:true});
+}));
+adminRouter.delete('/teacher-assignments',roles('school_admin'),wrap(async(req,res)=>{
+ const p=teacherAssignment.safeParse(req.body);if(!p.success)return error(res,400,'Qoondeynta sax ma aha');
+ const {rows}=await pool.query('DELETE FROM teacher_assignments WHERE school_id=$1 AND class_id=$2 AND subject_id=$3 AND teacher_id=$4 RETURNING teacher_id',[req.schoolId,p.data.classId,p.data.subjectId,p.data.teacherId]);
+ if(!rows.length)return error(res,404,'Qoondeynta lama helin');res.json({deleted:true});
+}));
