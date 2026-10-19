@@ -1,17 +1,17 @@
-# AqoonHub — React Starter
+# Somskill — React Starter
 
 Mashruucan waa **frontend demo**, mana aha SaaS production-ready ah. Waxa ku jira afar iskuul oo xog tijaabo ah, school URLs, natiijo-checker UI, staff-login UI iyo admin dashboard demo. **Ma jiro backend, database, authentication ama natiijooyin dhab ah.** Ha gelin xogta ardayda dhabta ah.
 
 ## Ku bilow Windows / VS Code
 1. ZIP-ka fur (Extract All).
-2. VS Code ku fur folder-ka `aqoonhub-starter`.
+2. VS Code ku fur folder-ka `somskill-starter`.
 3. Terminal > New Terminal.
 4. Qor `npm install`.
 5. Qor `npm run dev`.
 6. Browser-ka ka fur URL-ka terminal-ka kuu soo baxa (badanaa `http://localhost:5173`).
 
 ## Bogagga tijaabada
-- `/` — AqoonHub homepage
+- `/` — Somskill homepage
 - `/s/al-maqaasid` — bogga iskuulka
 - `/s/al-maqaasid/natiijo` — foomka natiijada (UI oo keliya)
 - `/s/al-maqaasid/galitaan` — foomka login (UI oo keliya)
