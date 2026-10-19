@@ -1,7 +1,7 @@
-name: AqoonHub frontend build
+name: Somskill frontend build
 on:
   push:
-    branches: [main, feature/aqoonhub-phase2]
+    branches: [main, feature/somskill-phase2]
   pull_request:
     branches: [main]
 jobs:
@@ -22,18 +22,18 @@ jobs:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_USER: aqoonhub
+          POSTGRES_USER: somskill
           POSTGRES_PASSWORD: test_password_only
-          POSTGRES_DB: aqoonhub_test
+          POSTGRES_DB: somskill_test
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U aqoonhub -d aqoonhub_test"
+          --health-cmd "pg_isready -U somskill -d somskill_test"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
     env:
-      DATABASE_URL: postgresql://aqoonhub:test_password_only@localhost:5432/aqoonhub_test
+      DATABASE_URL: postgresql://somskill:test_password_only@localhost:5432/somskill_test
       JWT_SECRET: github_actions_test_secret_not_for_real_use_123456789
       FRONTEND_ORIGIN: http://localhost:5173
     defaults:
@@ -53,10 +53,10 @@ jobs:
       - name: Apply database migrations
         working-directory: .
         run: |
-          PGPASSWORD=test_password_only psql -h localhost -U aqoonhub -d aqoonhub_test -v ON_ERROR_STOP=1 -f database/001_initial_schema.sql
-          PGPASSWORD=test_password_only psql -h localhost -U aqoonhub -d aqoonhub_test -v ON_ERROR_STOP=1 -f database/002_attendance_fees.sql
-          PGPASSWORD=test_password_only psql -h localhost -U aqoonhub -d aqoonhub_test -v ON_ERROR_STOP=1 -f database/003_audit_events.sql
-          PGPASSWORD=test_password_only psql -h localhost -U aqoonhub -d aqoonhub_test -v ON_ERROR_STOP=1 -f database/004_class_subjects.sql
+          PGPASSWORD=test_password_only psql -h localhost -U somskill -d somskill_test -v ON_ERROR_STOP=1 -f database/001_initial_schema.sql
+          PGPASSWORD=test_password_only psql -h localhost -U somskill -d somskill_test -v ON_ERROR_STOP=1 -f database/002_attendance_fees.sql
+          PGPASSWORD=test_password_only psql -h localhost -U somskill -d somskill_test -v ON_ERROR_STOP=1 -f database/003_audit_events.sql
+          PGPASSWORD=test_password_only psql -h localhost -U somskill -d somskill_test -v ON_ERROR_STOP=1 -f database/004_class_subjects.sql
       - name: API smoke test
         run: |
           node src/index.js &
