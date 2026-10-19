@@ -280,3 +280,48 @@ adminRouter.patch('/staff/:userId/password',roles('school_admin'),wrap(async(req
  AND u.is_platform_admin=false RETURNING u.id`,[req.schoolId,id.data,hash]);
  if(!rows.length)return error(res,404,'Shaqaalaha lama helin');res.json({updated:true});
 }));
+
+adminRouter.get('/exams/:examId/marks/template.xlsx',roles('school_admin','exam_officer'),wrap(async(req,res)=>{
+ const id=uuid.safeParse(req.params.examId);if(!id.success)return error(res,400,'Imtixaan sax ah dooro');
+ const exam=(await pool.query('SELECT id,class_id,title FROM exams WHERE school_id=$1 AND id=$2',[req.schoolId,id.data])).rows[0];
+ if(!exam)return error(res,404,'Imtixaanka lama helin');
+ const students=(await pool.query('SELECT id,registration_number,full_name FROM students WHERE school_id=$1 AND class_id=$2 AND is_active=true ORDER BY full_name',[req.schoolId,exam.class_id])).rows;
+ const subjects=(await pool.query('SELECT sub.id,sub.name FROM class_subjects cs JOIN subjects sub ON sub.school_id=cs.school_id AND sub.id=cs.subject_id WHERE cs.school_id=$1 AND cs.class_id=$2 ORDER BY sub.name',[req.schoolId,exam.class_id])).rows;
+ const wb=new ExcelJS.Workbook();const sheet=wb.addWorksheet('Marks');
+ sheet.columns=[{header:'registrationNumber',key:'registrationNumber',width:24},{header:'subject',key:'subject',width:30},{header:'score',key:'score',width:15},{header:'maxScore',key:'maxScore',width:15}];
+ for(const st of students)for(const sub of subjects)sheet.addRow({registrationNumber:st.registration_number,subject:sub.name,score:null,maxScore:100});
+ sheet.getRow(1).font={bold:true};const info=wb.addWorksheet('Students');info.columns=[{header:'registrationNumber',key:'registration_number',width:24},{header:'fullName',key:'full_name',width:36}];info.addRows(students);info.getRow(1).font={bold:true};
+ res.set('Content-Type','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');res.set('Content-Disposition','attachment; filename="aqoonhub-results-template.xlsx"');res.send(Buffer.from(await wb.xlsx.writeBuffer()));
+}));
+adminRouter.post('/exams/:examId/marks/import.xlsx',roles('school_admin','exam_officer'),wrap(async(req,res)=>{
+ const id=uuid.safeParse(req.params.examId);if(!id.success)return error(res,400,'Imtixaan sax ah dooro');
+ if(!Buffer.isBuffer(req.body)||req.body.length>2*1024*1024)return error(res,400,'Fayl Excel sax ah ayaa loo baahan yahay');
+ const wb=new ExcelJS.Workbook();try{await wb.xlsx.load(req.body)}catch{return error(res,400,'Excel-ka lama akhrin karo')}
+ const ws=wb.worksheets[0];if(!ws)return error(res,400,'Excel sheet ma jiro');
+ if([1,2,3,4].map(i=>ws.getRow(1).getCell(i).text.trim()).join('|')!=='registrationNumber|subject|score|maxScore')return error(res,400,'Columns: registrationNumber, subject, score, maxScore');
+ const entries=[];for(let i=2;i<=ws.rowCount;i++){
+ const row=ws.getRow(i);if([1,2,3,4].every(j=>!row.getCell(j).text.trim()))continue;
+ const item={registrationNumber:row.getCell(1).text.trim(),subject:row.getCell(2).text.trim(),score:Number(row.getCell(3).value),maxScore:Number(row.getCell(4).value)};
+ if(!item.registrationNumber||!item.subject||!row.getCell(3).text.trim()||!row.getCell(4).text.trim()||!Number.isFinite(item.score)||!Number.isFinite(item.maxScore)||item.score<0||item.maxScore<=0||item.score>item.maxScore)return error(res,400,'Dhibcaha safka '+i+' sax ma aha');
+ entries.push(item);if(entries.length>1000)return error(res,400,'Ugu badnaan 1000 dhibcood');
+ }
+ if(!entries.length)return error(res,400,'Dhibco lama helin');
+ const client=await pool.connect();try{
+ await client.query('BEGIN');
+ const exam=(await client.query("SELECT class_id FROM exams WHERE school_id=$1 AND id=$2 AND status='draft' FOR UPDATE",[req.schoolId,id.data])).rows[0];
+ if(!exam){await client.query('ROLLBACK');return error(res,409,'Imtixaanku waa inuu draft yahay')}
+ const seen=new Set();
+ for(const item of entries){
+ const key=item.registrationNumber+'|'+item.subject.toLowerCase();if(seen.has(key))throw new Error('Dhibco soo noqnoqday: '+key);seen.add(key);
+ const {rows}=await client.query(`INSERT INTO exam_marks(school_id,exam_id,student_id,subject_id,score,max_score,entered_by)
+ SELECT $1,$2,st.id,sub.id,$5,$6,$7 FROM students st
+ JOIN class_subjects cs ON cs.school_id=st.school_id AND cs.class_id=st.class_id
+ JOIN subjects sub ON sub.school_id=cs.school_id AND sub.id=cs.subject_id
+ WHERE st.school_id=$1 AND st.class_id=$3 AND st.registration_number=$4 AND st.is_active=true AND lower(sub.name)=lower($8)
+ ON CONFLICT(school_id,exam_id,student_id,subject_id) DO UPDATE SET score=EXCLUDED.score,max_score=EXCLUDED.max_score,entered_by=EXCLUDED.entered_by,updated_at=now() RETURNING student_id`,
+ [req.schoolId,id.data,exam.class_id,item.registrationNumber,item.score,item.maxScore,req.userId,item.subject]);
+ if(!rows.length)throw new Error('Arday ama maaddo aan jirin: '+key);
+ }
+ await client.query('COMMIT');res.status(201).json({imported:entries.length});
+ }catch(e){await client.query('ROLLBACK');return error(res,409,e.message)}finally{client.release()}
+}));
