@@ -24,7 +24,7 @@ const resultSchema=z.object({registrationNumber:z.string().trim().min(1).max(100
 function bearer(req,res,next){
  const token=req.headers.authorization?.match(/^Bearer (.+)$/)?.[1];
  if(!token)return fail(res,401,'Fadlan soo gal');
- try{req.user=jwt.verify(token,process.env.JWT_SECRET,{algorithms:['HS256'],issuer:'aqoonhub'});next()}
+ try{req.user=jwt.verify(token,process.env.JWT_SECRET,{algorithms:['HS256'],issuer:'somskill'});next()}
  catch{return fail(res,401,'Galitaankaagu wuu dhacay')}
 }
 async function membership(req,res,next){
@@ -59,7 +59,7 @@ app.post('/api/schools/:slug/login',authLimit,school,handler(async(req,res)=>{
  const valid=await bcrypt.compare(password,rows[0]?.password_hash||dummy);
  if(!rows.length||!valid)return fail(res,401,'Iimaylka ama furaha sirta waa khalad');
  const user=rows[0];
- const token=jwt.sign({sub:user.id,schoolId:req.school.id,role:user.role},process.env.JWT_SECRET,{algorithm:'HS256',issuer:'aqoonhub',expiresIn:'2h'});
+ const token=jwt.sign({sub:user.id,schoolId:req.school.id,role:user.role},process.env.JWT_SECRET,{algorithm:'HS256',issuer:'somskill',expiresIn:'2h'});
  res.json({token,user:{id:user.id,email:user.email,name:user.full_name,role:user.role},school:req.school});
 }));
 app.get('/api/schools/:slug/me',school,bearer,handler(membership),(req,res)=>{
@@ -112,4 +112,4 @@ app.use('/api/schools/:slug/admin/students/import.xlsx',express.raw({type:'appli
 app.use('/api/schools/:slug/admin',adminRouter);
 app.use('/api/platform',platformRouter);
 app.use((err,_req,res,_next)=>{console.error(err);fail(res,500,'Cilad server ayaa dhacday')});
-app.listen(Number(process.env.PORT||4000),()=>console.log('AqoonHub API listening'));
+app.listen(Number(process.env.PORT||4000),()=>console.log('Somskill API listening'));
