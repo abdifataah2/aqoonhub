@@ -23,7 +23,7 @@ adminRouter.use(wrap(async(req,res,next)=>{
  const token=req.headers.authorization?.match(/^Bearer (.+)$/)?.[1];
  if(!token)return error(res,401,'Fadlan soo gal');
  let claims;
- try{claims=jwt.verify(token,process.env.JWT_SECRET,{algorithms:['HS256'],issuer:'aqoonhub'})}
+ try{claims=jwt.verify(token,process.env.JWT_SECRET,{algorithms:['HS256'],issuer:'somskill'})}
  catch{return error(res,401,'Galitaankaagu wuu dhacay')}
  const {rows}=await pool.query(`SELECT s.id,m.role FROM schools s JOIN school_memberships m ON m.school_id=s.id
  WHERE s.slug=$1 AND s.is_active=true AND m.user_id=$2 AND m.is_active=true`,[slug,claims.sub]);
@@ -228,7 +228,7 @@ adminRouter.get('/students/template.xlsx',roles('school_admin'),wrap(async(req,r
  students.getRow(1).font={bold:true};
  const classes=workbook.addWorksheet('Classes');classes.columns=[{header:'classId',key:'id',width:40},{header:'className',key:'name',width:30},{header:'academicYear',key:'academic_year',width:22}];classes.addRows(rows);classes.getRow(1).font={bold:true};
  res.set('Content-Type','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
- res.set('Content-Disposition','attachment; filename="aqoonhub-student-template.xlsx"');
+ res.set('Content-Disposition','attachment; filename="somskill-student-template.xlsx"');
  res.send(Buffer.from(await workbook.xlsx.writeBuffer()));
 }));
 adminRouter.get('/students/export.xlsx',roles('school_admin'),wrap(async(req,res)=>{
@@ -237,7 +237,7 @@ adminRouter.get('/students/export.xlsx',roles('school_admin'),wrap(async(req,res
  ws.columns=[{header:'registrationNumber',key:'registration_number',width:24},{header:'fullName',key:'full_name',width:40},{header:'classId',key:'class_id',width:40}];
  ws.addRows(rows);ws.getRow(1).font={bold:true};const buffer=await wb.xlsx.writeBuffer();
  res.set('Content-Type','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
- res.set('Content-Disposition','attachment; filename="aqoonhub-students.xlsx"');res.send(Buffer.from(buffer));
+ res.set('Content-Disposition','attachment; filename="somskill-students.xlsx"');res.send(Buffer.from(buffer));
 }));
 adminRouter.post('/students/import.xlsx',roles('school_admin'),wrap(async(req,res)=>{
  if(!Buffer.isBuffer(req.body)||req.body.length<10||req.body.length>2*1024*1024)return error(res,400,'Faylka Excel sax ma aha (ugu badnaan 2 MB)');
@@ -291,7 +291,7 @@ adminRouter.get('/exams/:examId/marks/template.xlsx',roles('school_admin','exam_
  sheet.columns=[{header:'registrationNumber',key:'registrationNumber',width:24},{header:'subject',key:'subject',width:30},{header:'score',key:'score',width:15},{header:'maxScore',key:'maxScore',width:15}];
  for(const st of students)for(const sub of subjects)sheet.addRow({registrationNumber:st.registration_number,subject:sub.name,score:null,maxScore:100});
  sheet.getRow(1).font={bold:true};const info=wb.addWorksheet('Students');info.columns=[{header:'registrationNumber',key:'registration_number',width:24},{header:'fullName',key:'full_name',width:36}];info.addRows(students);info.getRow(1).font={bold:true};
- res.set('Content-Type','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');res.set('Content-Disposition','attachment; filename="aqoonhub-results-template.xlsx"');res.send(Buffer.from(await wb.xlsx.writeBuffer()));
+ res.set('Content-Type','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');res.set('Content-Disposition','attachment; filename="somskill-results-template.xlsx"');res.send(Buffer.from(await wb.xlsx.writeBuffer()));
 }));
 adminRouter.post('/exams/:examId/marks/import.xlsx',roles('school_admin','exam_officer'),wrap(async(req,res)=>{
  const id=uuid.safeParse(req.params.examId);if(!id.success)return error(res,400,'Imtixaan sax ah dooro');
@@ -329,7 +329,7 @@ adminRouter.post('/exams/:examId/marks/import.xlsx',roles('school_admin','exam_o
 adminRouter.get('/staff/template.xlsx',roles('school_admin'),wrap(async(_req,res)=>{
  const wb=new ExcelJS.Workbook();const ws=wb.addWorksheet('Teachers');
  ws.columns=[{header:'fullName',key:'fullName',width:38},{header:'email',key:'email',width:38},{header:'password',key:'password',width:26}];ws.getRow(1).font={bold:true};
- res.set('Content-Type','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');res.set('Content-Disposition','attachment; filename="aqoonhub-teachers-template.xlsx"');res.send(Buffer.from(await wb.xlsx.writeBuffer()));
+ res.set('Content-Type','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');res.set('Content-Disposition','attachment; filename="somskill-teachers-template.xlsx"');res.send(Buffer.from(await wb.xlsx.writeBuffer()));
 }));
 adminRouter.post('/staff/import.xlsx',roles('school_admin'),wrap(async(req,res)=>{
  if(!Buffer.isBuffer(req.body)||req.body.length>2*1024*1024)return error(res,400,'Excel fayl sax ah ayaa loo baahan yahay');
