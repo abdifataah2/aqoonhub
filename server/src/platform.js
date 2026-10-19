@@ -43,3 +43,12 @@ platformRouter.post('/schools',wrap(async(req,res)=>{
  await client.query('COMMIT');res.status(201).json({school:schoolRow});
  }catch(e){await client.query('ROLLBACK');if(e.code==='23505')return fail(res,409,'Slug ama email-kan hore ayaa loo isticmaalay');throw e}finally{client.release()}
 }));
+
+platformRouter.patch('/schools/:id',wrap(async(req,res)=>{
+ const id=z.string().uuid().safeParse(req.params.id);
+ const input=z.object({isActive:z.boolean()}).safeParse(req.body);
+ if(!id.success||!input.success)return fail(res,400,'Xogta iskuulka sax ma aha');
+ const {rows}=await pool.query('UPDATE schools SET is_active=$2 WHERE id=$1 RETURNING id,name,slug,is_active',[id.data,input.data.isActive]);
+ if(!rows.length)return fail(res,404,'Iskuulka lama helin');
+ res.json({school:rows[0]});
+}));
