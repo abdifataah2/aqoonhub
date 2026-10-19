@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import assert from 'node:assert/strict';
 import bcrypt from 'bcryptjs';
+import ExcelJS from 'exceljs';
 import {randomUUID} from 'node:crypto';
 import {pool} from './db.js';
 
@@ -58,6 +59,13 @@ try{
  const revoked=await fetch(origin+'/api/schools/'+a+'/admin/summary',{headers:{Authorization:'Bearer '+staffLogin.data.token}});
  assert.equal(revoked.status,403,'deactivated staff token must be denied');
 
+ const teacherWb=new ExcelJS.Workbook();const teacherWs=teacherWb.addWorksheet('Teachers');
+ teacherWs.addRow(['fullName','email','password']);teacherWs.addRow(['Excel Teacher','excel-'+suffix+'@example.test',password]);
+ const teacherUpload=await fetch(origin+'/api/schools/'+a+'/admin/staff/import.xlsx',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'},body:Buffer.from(await teacherWb.xlsx.writeBuffer())});
+ assert.equal(teacherUpload.status,201,'Excel teacher import succeeds');
+ assert.equal((await teacherUpload.json()).added,1);
+ const excelTeacherLogin=await call('/api/schools/'+a+'/login',{email:'excel-'+suffix+'@example.test',password});
+ assert.equal(excelTeacherLogin.status,200,'imported teacher can login');
  const student=await call('/api/schools/'+a+'/admin/students',{classId:klass.data.class.id,registrationNumber:'REG-'+suffix,fullName:'Test Student',resultPin:'12345678'},token);
  assert.equal(student.status,201,'student registration should work');
  const subject=await call('/api/schools/'+a+'/admin/subjects',{name:'Math'},token);
@@ -72,13 +80,19 @@ try{
  assert.equal(exam.status,201,'create exam');
  const mark=await call('/api/schools/'+a+'/admin/exams/'+exam.data.exam.id+'/marks',{studentId:student.data.student.id,subjectId:subject.data.subject.id,score:85,maxScore:100},token);
  assert.equal(mark.status,200,'record exam mark');
+ const markWb=new ExcelJS.Workbook();const markWs=markWb.addWorksheet('Marks');
+ markWs.addRow(['registrationNumber','subject','score','maxScore']);
+ markWs.addRow(['REG-'+suffix,'Math',90,100]);
+ const marksUpload=await fetch(origin+'/api/schools/'+a+'/admin/exams/'+exam.data.exam.id+'/marks/import.xlsx',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'},body:Buffer.from(await markWb.xlsx.writeBuffer())});
+ assert.equal(marksUpload.status,201,'Excel marks import succeeds');
+ assert.equal((await marksUpload.json()).imported,1);
  const submit=await call('/api/schools/'+a+'/admin/exams/'+exam.data.exam.id+'/submit',{},token);
  assert.equal(submit.status,200,'submit exam');
  const publish=await call('/api/schools/'+a+'/admin/exams/'+exam.data.exam.id+'/publish',{},token);
  assert.equal(publish.status,200,'publish exam');
  const publishedResult=await call('/api/schools/'+a+'/student-login',{registrationNumber:'REG-'+suffix});
  assert.equal(publishedResult.status,200,'student results lookup');
- assert.ok(publishedResult.data.exams.some(e=>e.marks.some(m=>m.subject==='Math'&&m.score===85)),'student sees published marks');
+ assert.ok(publishedResult.data.exams.some(e=>e.marks.some(m=>m.subject==='Math'&&m.score===90)),'student sees published marks');
  const crossSchoolResult=await call('/api/schools/'+b+'/student-login',{registrationNumber:'REG-'+suffix});
  assert.equal(crossSchoolResult.status,404,'other school cannot expose student results');
  const attendance=await call('/api/schools/'+a+'/admin/attendance',{studentId:student.data.student.id,date:'2026-10-17',status:'present'},token);
@@ -99,6 +113,6 @@ try{
  if(schoolA)await pool.query('DELETE FROM schools WHERE id=$1',[schoolA]);
  if(schoolB)await pool.query('DELETE FROM schools WHERE id=$1',[schoolB]);
  if(schoolC)await pool.query('DELETE FROM schools WHERE id=$1',[schoolC]);
- await pool.query('DELETE FROM users WHERE email=ANY($1)',[['ci-'+suffix+'@example.test','staff-'+suffix+'@example.test','platform-'+suffix+'@example.test','ci-c-admin-'+suffix+'@example.test']]);
+ await pool.query('DELETE FROM users WHERE email=ANY($1)',[['ci-'+suffix+'@example.test','staff-'+suffix+'@example.test','platform-'+suffix+'@example.test','ci-c-admin-'+suffix+'@example.test','excel-'+suffix+'@example.test']]);
  await pool.end();
 }
