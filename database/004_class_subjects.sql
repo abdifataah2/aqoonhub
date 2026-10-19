@@ -1,4 +1,4 @@
--- AqoonHub phase 3: class-subject mapping, teacher assignments.
+-- Somskill phase 3: class-subject mapping, teacher assignments.
 CREATE TABLE IF NOT EXISTS class_subjects (
  school_id uuid NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
  class_id uuid NOT NULL,
