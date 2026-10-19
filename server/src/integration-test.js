@@ -66,6 +66,14 @@ try{
  assert.equal((await teacherUpload.json()).added,1);
  const excelTeacherLogin=await call('/api/schools/'+a+'/login',{email:'excel-'+suffix+'@example.test',password});
  assert.equal(excelTeacherLogin.status,200,'imported teacher can login');
+ const teacherSubject=await call('/api/schools/'+a+'/admin/subjects',{name:'Physics'},token);
+ assert.equal(teacherSubject.status,201);
+ const teacherClassSubject=await call('/api/schools/'+a+'/admin/class-subjects',{classId:klass.data.class.id,subjectId:teacherSubject.data.subject.id},token);
+ assert.equal(teacherClassSubject.status,201);
+ const assigned=await call('/api/schools/'+a+'/admin/teacher-assignments',{classId:klass.data.class.id,subjectId:teacherSubject.data.subject.id,teacherId:staff.data.staff.id},token);
+ assert.equal(assigned.status,201,'assign teacher to class and subject');
+ const teacherDenied=await call('/api/schools/'+a+'/admin/staff',{email:'denied-'+suffix+'@example.test',fullName:'No Permission',password,role:'teacher'},staffLogin.data.token);
+ assert.equal(teacherDenied.status,403,'teacher cannot create staff');
  const student=await call('/api/schools/'+a+'/admin/students',{classId:klass.data.class.id,registrationNumber:'REG-'+suffix,fullName:'Test Student',resultPin:'12345678'},token);
  assert.equal(student.status,201,'student registration should work');
  const subject=await call('/api/schools/'+a+'/admin/subjects',{name:'Math'},token);
@@ -78,6 +86,10 @@ try{
  assert.equal(studentLogin.status,200,'registration-only access works');
  const exam=await call('/api/schools/'+a+'/admin/exams',{classId:klass.data.class.id,title:'Final '+suffix,academicYear:'2026'},token);
  assert.equal(exam.status,201,'create exam');
+ const teacherMark=await call('/api/schools/'+a+'/admin/exams/'+exam.data.exam.id+'/marks',{studentId:student.data.student.id,subjectId:teacherSubject.data.subject.id,score:70,maxScore:100},staffLogin.data.token);
+ assert.equal(teacherMark.status,403,'deactivated teacher cannot enter marks');
+ const importedTeacherUnassigned=await call('/api/schools/'+a+'/admin/exams/'+exam.data.exam.id+'/marks',{studentId:student.data.student.id,subjectId:teacherSubject.data.subject.id,score:70,maxScore:100},excelTeacherLogin.data.token);
+ assert.equal(importedTeacherUnassigned.status,409,'unassigned teacher cannot enter marks');
  const mark=await call('/api/schools/'+a+'/admin/exams/'+exam.data.exam.id+'/marks',{studentId:student.data.student.id,subjectId:subject.data.subject.id,score:85,maxScore:100},token);
  assert.equal(mark.status,200,'record exam mark');
  const markWb=new ExcelJS.Workbook();const markWs=markWb.addWorksheet('Marks');
