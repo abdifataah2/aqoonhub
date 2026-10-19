@@ -325,3 +325,34 @@ adminRouter.post('/exams/:examId/marks/import.xlsx',roles('school_admin','exam_o
  await client.query('COMMIT');res.status(201).json({imported:entries.length});
  }catch(e){await client.query('ROLLBACK');return error(res,409,e.message)}finally{client.release()}
 }));
+
+adminRouter.get('/staff/template.xlsx',roles('school_admin'),wrap(async(_req,res)=>{
+ const wb=new ExcelJS.Workbook();const ws=wb.addWorksheet('Teachers');
+ ws.columns=[{header:'fullName',key:'fullName',width:38},{header:'email',key:'email',width:38},{header:'password',key:'password',width:26}];ws.getRow(1).font={bold:true};
+ res.set('Content-Type','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');res.set('Content-Disposition','attachment; filename="aqoonhub-teachers-template.xlsx"');res.send(Buffer.from(await wb.xlsx.writeBuffer()));
+}));
+adminRouter.post('/staff/import.xlsx',roles('school_admin'),wrap(async(req,res)=>{
+ if(!Buffer.isBuffer(req.body)||req.body.length>2*1024*1024)return error(res,400,'Excel fayl sax ah ayaa loo baahan yahay');
+ const wb=new ExcelJS.Workbook();try{await wb.xlsx.load(req.body)}catch{return error(res,400,'Excel-ka lama akhrin karo')}
+ const ws=wb.worksheets[0];if(!ws)return error(res,400,'Excel sheet ma jiro');
+ if([1,2,3].map(i=>ws.getRow(1).getCell(i).text.trim()).join('|')!=='fullName|email|password')return error(res,400,'Columns: fullName, email, password');
+ const input=z.array(z.object({fullName:z.string().trim().min(2).max(200),email:z.string().email().max(254),password:z.string().min(12).max(128)})).min(1).max(100);
+ const entries=[];for(let i=2;i<=ws.rowCount;i++){
+ const row=ws.getRow(i);if([1,2,3].every(j=>!row.getCell(j).text.trim()))continue;
+ entries.push({fullName:row.getCell(1).text.trim(),email:row.getCell(2).text.trim().toLowerCase(),password:row.getCell(3).text});
+ if(entries.length>100)return error(res,400,'Ugu badnaan 100 macallin');
+ }
+ const parsed=input.safeParse(entries);if(!parsed.success)return error(res,400,'Magaca, email ama password-ka macallimiinta sax ma aha');
+ const emails=parsed.data.map(x=>x.email);if(new Set(emails).size!==emails.length)return error(res,409,'Email soo noqnoqday ayaa faylka ku jira');
+ const client=await pool.connect();try{
+ await client.query('BEGIN');
+ const existing=await client.query('SELECT email FROM users WHERE lower(email)=ANY($1::text[])',[emails]);
+ if(existing.rows.length)throw new Error('Email hore loo isticmaalay: '+existing.rows[0].email);
+ for(const t of parsed.data){
+ const hash=await bcrypt.hash(t.password,12);
+ const user=(await client.query('INSERT INTO users(email,password_hash,full_name) VALUES($1,$2,$3) RETURNING id',[t.email,hash,t.fullName])).rows[0];
+ await client.query("INSERT INTO school_memberships(school_id,user_id,role) VALUES($1,$2,'teacher')",[req.schoolId,user.id]);
+ }
+ await client.query('COMMIT');res.status(201).json({added:parsed.data.length});
+ }catch(e){await client.query('ROLLBACK');return error(res,409,e.message)}finally{client.release()}
+}));
