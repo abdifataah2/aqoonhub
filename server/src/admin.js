@@ -40,7 +40,7 @@ adminRouter.get('/summary',wrap(async(req,res)=>{
  res.json({summary:rows[0]});
 }));
 adminRouter.get('/classes',wrap(async(req,res)=>{
- const {rows}=await pool.query('SELECT id,name,academic_year FROM classes WHERE school_id=$1 AND ($2 <> 'teacher' OR id IN (SELECT class_id FROM teacher_assignments WHERE school_id=$1 AND teacher_id=$3)) ORDER BY name',[req.schoolId,req.role,req.userId]);
+ const {rows}=await pool.query(`SELECT id,name,academic_year FROM classes WHERE school_id=$1 AND ($2 <> 'teacher' OR id IN (SELECT class_id FROM teacher_assignments WHERE school_id=$1 AND teacher_id=$3)) ORDER BY name`,[req.schoolId,req.role,req.userId]);
  res.json({classes:rows});
 }));
 adminRouter.post('/classes',roles('school_admin'),wrap(async(req,res)=>{
@@ -49,7 +49,7 @@ adminRouter.post('/classes',roles('school_admin'),wrap(async(req,res)=>{
  res.status(201).json({class:rows[0]});
 }));
 adminRouter.get('/students',roles('school_admin','exam_officer','teacher'),wrap(async(req,res)=>{
- const {rows}=await pool.query('SELECT id,class_id,registration_number,full_name,is_active FROM students WHERE school_id=$1 AND ($2 <> 'teacher' OR class_id IN (SELECT class_id FROM teacher_assignments WHERE school_id=$1 AND teacher_id=$3)) ORDER BY registration_number LIMIT 200',[req.schoolId,req.role,req.userId]);
+ const {rows}=await pool.query(`SELECT id,class_id,registration_number,full_name,is_active FROM students WHERE school_id=$1 AND ($2 <> 'teacher' OR class_id IN (SELECT class_id FROM teacher_assignments WHERE school_id=$1 AND teacher_id=$3)) ORDER BY registration_number LIMIT 200`,[req.schoolId,req.role,req.userId]);
  res.json({students:rows});
 }));
 adminRouter.post('/students',roles('school_admin'),wrap(async(req,res)=>{
@@ -61,7 +61,7 @@ adminRouter.post('/students',roles('school_admin'),wrap(async(req,res)=>{
  res.status(201).json({student:rows[0]});
 }));
 adminRouter.get('/subjects',wrap(async(req,res)=>{
- const {rows}=await pool.query('SELECT id,name FROM subjects WHERE school_id=$1 AND ($2 <> 'teacher' OR id IN (SELECT subject_id FROM teacher_assignments WHERE school_id=$1 AND teacher_id=$3)) ORDER BY name',[req.schoolId,req.role,req.userId]);
+ const {rows}=await pool.query(`SELECT id,name FROM subjects WHERE school_id=$1 AND ($2 <> 'teacher' OR id IN (SELECT subject_id FROM teacher_assignments WHERE school_id=$1 AND teacher_id=$3)) ORDER BY name`,[req.schoolId,req.role,req.userId]);
  res.json({subjects:rows});
 }));
 adminRouter.post('/subjects',roles('school_admin'),wrap(async(req,res)=>{
@@ -70,7 +70,7 @@ adminRouter.post('/subjects',roles('school_admin'),wrap(async(req,res)=>{
  res.status(201).json({subject:rows[0]});
 }));
 adminRouter.get('/exams',wrap(async(req,res)=>{
- const {rows}=await pool.query('SELECT id,class_id,title,academic_year,status,published_at FROM exams WHERE school_id=$1 AND ($2 <> 'teacher' OR class_id IN (SELECT class_id FROM teacher_assignments WHERE school_id=$1 AND teacher_id=$3)) ORDER BY created_at DESC',[req.schoolId,req.role,req.userId]);
+ const {rows}=await pool.query(`SELECT id,class_id,title,academic_year,status,published_at FROM exams WHERE school_id=$1 AND ($2 <> 'teacher' OR class_id IN (SELECT class_id FROM teacher_assignments WHERE school_id=$1 AND teacher_id=$3)) ORDER BY created_at DESC`,[req.schoolId,req.role,req.userId]);
  res.json({exams:rows});
 }));
 adminRouter.post('/exams',roles('school_admin','exam_officer'),wrap(async(req,res)=>{
@@ -181,7 +181,7 @@ adminRouter.get('/audit',roles('school_admin'),wrap(async(req,res)=>{
 const assignment=z.object({classId:uuid,subjectId:uuid});
 const teacherAssignment=assignment.extend({teacherId:uuid});
 adminRouter.get('/class-subjects',wrap(async(req,res)=>{
- const {rows}=await pool.query('SELECT class_id,subject_id FROM class_subjects WHERE school_id=$1 AND ($2 <> 'teacher' OR EXISTS (SELECT 1 FROM teacher_assignments ta WHERE ta.school_id=$1 AND ta.class_id=class_subjects.class_id AND ta.subject_id=class_subjects.subject_id AND ta.teacher_id=$3)) ORDER BY class_id,subject_id',[req.schoolId,req.role,req.userId]);res.json({assignments:rows});
+ const {rows}=await pool.query(`SELECT class_id,subject_id FROM class_subjects WHERE school_id=$1 AND ($2 <> 'teacher' OR EXISTS (SELECT 1 FROM teacher_assignments ta WHERE ta.school_id=$1 AND ta.class_id=class_subjects.class_id AND ta.subject_id=class_subjects.subject_id AND ta.teacher_id=$3)) ORDER BY class_id,subject_id`,[req.schoolId,req.role,req.userId]);res.json({assignments:rows});
 }));
 adminRouter.post('/class-subjects',roles('school_admin'),wrap(async(req,res)=>{
  const p=assignment.safeParse(req.body);if(!p.success)return error(res,400,'Fasalka ama maaddada sax ma aha');
