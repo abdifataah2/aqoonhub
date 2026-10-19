@@ -29,6 +29,7 @@ function bearer(req,res,next){
 }
 async function membership(req,res,next){
  const schoolId=req.school.id;
+ if(req.user.schoolId!==schoolId)return fail(res,403,'Koontadani iskuulkan ma laha');
  const {rows}=await pool.query('SELECT role FROM school_memberships WHERE school_id=$1 AND user_id=$2 AND is_active=true',[schoolId,req.user.sub]);
  if(!rows.length)return fail(res,403,'Uma lihid oggolaansho iskuulkan');
  req.role=rows[0].role;next();
