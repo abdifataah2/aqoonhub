@@ -13,7 +13,7 @@ if(!process.env.JWT_SECRET || process.env.JWT_SECRET.length<32) throw new Error(
 const app=express();
 app.disable('x-powered-by');
 app.use(cors({origin:process.env.FRONTEND_ORIGIN||'http://localhost:5173'}));
-app.use(express.json({limit:'32kb'}));
+app.use(express.json({limit:'256kb'}));
 const authLimit=rateLimit({windowMs:15*60*1000,limit:15,standardHeaders:'draft-7',legacyHeaders:false});
 const resultLimit=rateLimit({windowMs:15*60*1000,limit:10,standardHeaders:'draft-7',legacyHeaders:false});
 const fail=(res,code,message)=>res.status(code).json({error:message});
