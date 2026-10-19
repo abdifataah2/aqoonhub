@@ -221,6 +221,16 @@ async function importStudents(schoolId,students){
  await client.query('COMMIT');return students.length;
  }catch(e){await client.query('ROLLBACK');throw e}finally{client.release()}
 }
+adminRouter.get('/students/template.xlsx',roles('school_admin'),wrap(async(req,res)=>{
+ const {rows}=await pool.query('SELECT id,name,academic_year FROM classes WHERE school_id=$1 ORDER BY name',[req.schoolId]);
+ const workbook=new ExcelJS.Workbook();const students=workbook.addWorksheet('Students');
+ students.columns=[{header:'registrationNumber',key:'registrationNumber',width:26},{header:'fullName',key:'fullName',width:40},{header:'classId',key:'classId',width:40}];
+ students.getRow(1).font={bold:true};
+ const classes=workbook.addWorksheet('Classes');classes.columns=[{header:'classId',key:'id',width:40},{header:'className',key:'name',width:30},{header:'academicYear',key:'academic_year',width:22}];classes.addRows(rows);classes.getRow(1).font={bold:true};
+ res.set('Content-Type','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+ res.set('Content-Disposition','attachment; filename="aqoonhub-student-template.xlsx"');
+ res.send(Buffer.from(await workbook.xlsx.writeBuffer()));
+}));
 adminRouter.get('/students/export.xlsx',roles('school_admin'),wrap(async(req,res)=>{
  const {rows}=await pool.query('SELECT st.registration_number,st.full_name,st.class_id FROM students st WHERE st.school_id=$1 ORDER BY st.registration_number',[req.schoolId]);
  const wb=new ExcelJS.Workbook();const ws=wb.addWorksheet('Ardayda');
