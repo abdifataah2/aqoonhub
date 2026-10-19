@@ -1,4 +1,4 @@
--- AqoonHub development migration 002: attendance and school fees
+-- Somskill development migration 002: attendance and school fees
 CREATE TABLE IF NOT EXISTS attendance (
  school_id uuid NOT NULL,
  student_id uuid NOT NULL,
