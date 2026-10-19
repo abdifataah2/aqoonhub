@@ -77,7 +77,7 @@ adminRouter.post('/exams',roles('school_admin','exam_officer'),wrap(async(req,re
  const {rows}=await pool.query('INSERT INTO exams(school_id,class_id,title,academic_year) VALUES($1,$2,$3,$4) RETURNING id,class_id,title,academic_year,status',[req.schoolId,data.data.classId,data.data.title,data.data.academicYear]);
  res.status(201).json({exam:rows[0]});
 }));
-adminRouter.post('/exams/:examId/marks',roles('school_admin','exam_officer'),wrap(async(req,res)=>{
+adminRouter.post('/exams/:examId/marks',roles('school_admin','exam_officer','teacher'),wrap(async(req,res)=>{
  const id=uuid.safeParse(req.params.examId),data=markInput.safeParse(req.body);
  if(!id.success||!data.success)return error(res,400,'Dhibcaha ama aqoonsiga sax ma aha');
  const {studentId,subjectId,score,maxScore}=data.data;
@@ -86,9 +86,11 @@ adminRouter.post('/exams/:examId/marks',roles('school_admin','exam_officer'),wra
  JOIN students st ON st.school_id=e.school_id AND st.class_id=e.class_id AND st.id=$3 AND st.is_active=true
  JOIN subjects sub ON sub.school_id=e.school_id AND sub.id=$4
  WHERE e.school_id=$1 AND e.id=$2 AND e.status='draft'
+ AND EXISTS(SELECT 1 FROM class_subjects cs WHERE cs.school_id=e.school_id AND cs.class_id=e.class_id AND cs.subject_id=sub.id)
+ AND ($8 <> 'teacher' OR EXISTS(SELECT 1 FROM teacher_assignments ta WHERE ta.school_id=e.school_id AND ta.class_id=e.class_id AND ta.subject_id=sub.id AND ta.teacher_id=$7))
  ON CONFLICT(school_id,exam_id,student_id,subject_id)
  DO UPDATE SET score=EXCLUDED.score,max_score=EXCLUDED.max_score,entered_by=EXCLUDED.entered_by,updated_at=now()
- RETURNING exam_id,student_id,subject_id,score,max_score`,[req.schoolId,id.data,studentId,subjectId,score,maxScore,req.userId]);
+ RETURNING exam_id,student_id,subject_id,score,max_score`,[req.schoolId,id.data,studentId,subjectId,score,maxScore,req.userId,req.role]);
  if(!rows.length)return error(res,409,'Imtixaanka waa xiran yahay ama ardayga/maaddada ma waafaqsana');
  res.json({mark:rows[0]});
 }));
@@ -173,4 +175,49 @@ adminRouter.patch('/staff/:userId',roles('school_admin'),wrap(async(req,res)=>{
 adminRouter.get('/audit',roles('school_admin'),wrap(async(req,res)=>{
  const {rows}=await pool.query('SELECT id,actor_user_id,action,entity_type,entity_id,created_at FROM audit_events WHERE school_id=$1 ORDER BY created_at DESC LIMIT 200',[req.schoolId]);
  res.json({events:rows});
+}));
+
+const assignment=z.object({classId:uuid,subjectId:uuid});
+const teacherAssignment=assignment.extend({teacherId:uuid});
+adminRouter.get('/class-subjects',wrap(async(req,res)=>{
+ const {rows}=await pool.query('SELECT class_id,subject_id FROM class_subjects WHERE school_id=$1 ORDER BY class_id,subject_id',[req.schoolId]);res.json({assignments:rows});
+}));
+adminRouter.post('/class-subjects',roles('school_admin'),wrap(async(req,res)=>{
+ const p=assignment.safeParse(req.body);if(!p.success)return error(res,400,'Fasalka ama maaddada sax ma aha');
+ const {rows}=await pool.query(`INSERT INTO class_subjects(school_id,class_id,subject_id)
+ SELECT c.school_id,c.id,s.id FROM classes c JOIN subjects s ON s.school_id=c.school_id
+ WHERE c.school_id=$1 AND c.id=$2 AND s.id=$3 ON CONFLICT DO NOTHING RETURNING class_id,subject_id`,[req.schoolId,p.data.classId,p.data.subjectId]);
+ if(!rows.length)return error(res,409,'Maaddadan waa la qoondeeyey ama fasalka lama helin');res.status(201).json({assignment:rows[0]});
+}));
+adminRouter.get('/teacher-assignments',wrap(async(req,res)=>{
+ const {rows}=await pool.query('SELECT class_id,subject_id,teacher_id FROM teacher_assignments WHERE school_id=$1 AND ($2 <> \'teacher\' OR teacher_id=$3)',[req.schoolId,req.role,req.userId]);res.json({assignments:rows});
+}));
+adminRouter.post('/teacher-assignments',roles('school_admin'),wrap(async(req,res)=>{
+ const p=teacherAssignment.safeParse(req.body);if(!p.success)return error(res,400,'Xogta macallinka sax ma aha');
+ const {rows}=await pool.query(`INSERT INTO teacher_assignments(school_id,class_id,subject_id,teacher_id)
+ SELECT cs.school_id,cs.class_id,cs.subject_id,m.user_id FROM class_subjects cs
+ JOIN school_memberships m ON m.school_id=cs.school_id AND m.user_id=$4 AND m.role='teacher' AND m.is_active=true
+ WHERE cs.school_id=$1 AND cs.class_id=$2 AND cs.subject_id=$3
+ ON CONFLICT DO NOTHING RETURNING class_id,subject_id,teacher_id`,[req.schoolId,p.data.classId,p.data.subjectId,p.data.teacherId]);
+ if(!rows.length)return error(res,409,'Macallinka lama helin ama horay ayaa loo qoondeeyey');res.status(201).json({assignment:rows[0]});
+}));
+adminRouter.get('/students/export',roles('school_admin'),wrap(async(req,res)=>{
+ const {rows}=await pool.query(`SELECT st.registration_number,st.full_name,c.name AS class_name,c.academic_year FROM students st JOIN classes c ON c.id=st.class_id AND c.school_id=st.school_id WHERE st.school_id=$1 ORDER BY st.registration_number`,[req.schoolId]);
+ res.json({students:rows});
+}));
+const importSchema=z.object({students:z.array(z.object({registrationNumber:z.string().trim().min(1).max(100),fullName:z.string().trim().min(1).max(200),classId:uuid})).min(1).max(500)});
+adminRouter.post('/students/import',roles('school_admin'),wrap(async(req,res)=>{
+ const p=importSchema.safeParse(req.body);if(!p.success)return error(res,400,'Faylka ardayda sax ma aha (ugu badnaan 500)');
+ const unique=new Set(p.data.students.map(s=>s.registrationNumber));if(unique.size!==p.data.students.length)return error(res,400,'Reg-Number isku mid ah ayaa faylka ku jira');
+ const client=await pool.connect();
+ try{await client.query('BEGIN');let added=0;
+ for(const st of p.data.students){
+  const result=await client.query(`INSERT INTO students(school_id,class_id,registration_number,full_name,result_pin_hash)
+ SELECT c.school_id,c.id,$3,$4,$5 FROM classes c WHERE c.school_id=$1 AND c.id=$2
+ ON CONFLICT(school_id,registration_number) DO NOTHING RETURNING id`,[req.schoolId,st.classId,st.registrationNumber,st.fullName,await bcrypt.hash(st.registrationNumber+':'+process.env.JWT_SECRET,12)]);
+  if(!result.rowCount)throw new Error('Fasal aan jirin ama Reg-Number hore loo isticmaalay: '+st.registrationNumber);
+  added++;
+ }
+ await client.query('COMMIT');res.status(201).json({added});
+ }catch(e){await client.query('ROLLBACK');return error(res,409,e.message)}finally{client.release()}
 }));
