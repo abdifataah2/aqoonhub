@@ -16,12 +16,12 @@ platformRouter.post('/login',limit,wrap(async(req,res)=>{
  const dummy='$2a$12$abcdefghijklmnopqrstuuIixDgIhvdf2b6f8wE8V4U9QKPMJYwYK';
  const ok=await bcrypt.compare(parsed.data.password,rows[0]?.password_hash||dummy);
  if(!ok||!rows.length)return fail(res,401,'Email ama password khaldan');
- const token=jwt.sign({sub:rows[0].id,platform:true},process.env.JWT_SECRET,{algorithm:'HS256',issuer:'aqoonhub',expiresIn:'2h'});
+ const token=jwt.sign({sub:rows[0].id,platform:true},process.env.JWT_SECRET,{algorithm:'HS256',issuer:'somskill',expiresIn:'2h'});
  res.set('Cache-Control','no-store').json({token,name:rows[0].full_name});
 }));
 platformRouter.use(wrap(async(req,res,next)=>{
  const token=req.headers.authorization?.match(/^Bearer (.+)$/)?.[1];if(!token)return fail(res,401,'Fadlan soo gal');
- let claims;try{claims=jwt.verify(token,process.env.JWT_SECRET,{algorithms:['HS256'],issuer:'aqoonhub'})}catch{return fail(res,401,'Galitaankaagu wuu dhacay')}
+ let claims;try{claims=jwt.verify(token,process.env.JWT_SECRET,{algorithms:['HS256'],issuer:'somskill'})}catch{return fail(res,401,'Galitaankaagu wuu dhacay')}
  if(!claims.platform)return fail(res,403,'Ma tihid Super Admin');
  const {rows}=await pool.query('SELECT id FROM users WHERE id=$1 AND is_platform_admin=true',[claims.sub]);
  if(!rows.length)return fail(res,403,'Ma tihid Super Admin');req.platformId=rows[0].id;next();
