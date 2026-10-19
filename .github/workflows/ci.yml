@@ -1,0 +1,65 @@
+name: AqoonHub frontend build
+on:
+  push:
+    branches: [main, feature/aqoonhub-phase2]
+  pull_request:
+    branches: [main]
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: npm run build
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: aqoonhub
+          POSTGRES_PASSWORD: test_password_only
+          POSTGRES_DB: aqoonhub_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U aqoonhub -d aqoonhub_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://aqoonhub:test_password_only@localhost:5432/aqoonhub_test
+      JWT_SECRET: github_actions_test_secret_not_for_real_use_123456789
+      FRONTEND_ORIGIN: http://localhost:5173
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install
+      - run: node --check src/index.js
+      - run: node --check src/admin.js
+      - run: node --check src/seed.js
+      - run: node --check src/platform.js
+
+      - name: Apply database migrations
+        working-directory: .
+        run: |
+          PGPASSWORD=test_password_only psql -h localhost -U aqoonhub -d aqoonhub_test -v ON_ERROR_STOP=1 -f database/001_initial_schema.sql
+          PGPASSWORD=test_password_only psql -h localhost -U aqoonhub -d aqoonhub_test -v ON_ERROR_STOP=1 -f database/002_attendance_fees.sql
+          PGPASSWORD=test_password_only psql -h localhost -U aqoonhub -d aqoonhub_test -v ON_ERROR_STOP=1 -f database/003_audit_events.sql
+          PGPASSWORD=test_password_only psql -h localhost -U aqoonhub -d aqoonhub_test -v ON_ERROR_STOP=1 -f database/004_class_subjects.sql
+      - name: API smoke test
+        run: |
+          node src/index.js &
+          for i in $(seq 1 30); do if curl -fsS http://localhost:4000/api/health >/dev/null; then break; fi; sleep 1; done
+          node src/smoke-test.js
+          node src/integration-test.js
