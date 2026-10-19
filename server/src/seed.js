@@ -13,7 +13,7 @@ try{
  if(process.env.SEED_PLATFORM_EMAIL && process.env.SEED_PLATFORM_PASSWORD){
   if(!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(process.env.SEED_PLATFORM_EMAIL)||process.env.SEED_PLATFORM_PASSWORD.length<12)throw new Error('Platform admin email/password invalid');
   const platformHash=await bcrypt.hash(process.env.SEED_PLATFORM_PASSWORD,12);
-  await client.query("INSERT INTO users(email,password_hash,full_name,is_platform_admin) VALUES(lower($1),$2,'AqoonHub Super Admin',true) ON CONFLICT(email) DO UPDATE SET password_hash=EXCLUDED.password_hash,is_platform_admin=true",[process.env.SEED_PLATFORM_EMAIL,platformHash]);
+  await client.query("INSERT INTO users(email,password_hash,full_name,is_platform_admin) VALUES(lower($1),$2,'Somskill Super Admin',true) ON CONFLICT(email) DO UPDATE SET password_hash=EXCLUDED.password_hash,is_platform_admin=true",[process.env.SEED_PLATFORM_EMAIL,platformHash]);
  }
  await client.query('COMMIT');
  console.log('Development school/admin ready:',slug,email);
