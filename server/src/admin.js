@@ -251,3 +251,22 @@ adminRouter.post('/students/import',roles('school_admin'),wrap(async(req,res)=>{
  try{const added=await importStudents(req.schoolId,p.data.students);res.status(201).json({added})}
  catch(e){return error(res,409,e.message)}
 }));
+
+const studentUpdate=z.object({fullName:z.string().trim().min(1).max(200).optional(),classId:uuid.optional(),registrationNumber:z.string().trim().min(1).max(100).optional(),isActive:z.boolean().optional()}).refine(x=>Object.keys(x).length>0);
+adminRouter.patch('/students/:id',roles('school_admin'),wrap(async(req,res)=>{
+ const id=uuid.safeParse(req.params.id),p=studentUpdate.safeParse(req.body);if(!id.success||!p.success)return error(res,400,'Xogta ardayga sax ma aha');
+ const d=p.data;
+ const {rows}=await pool.query(`UPDATE students st SET full_name=COALESCE($3,full_name),class_id=COALESCE($4,class_id),registration_number=COALESCE($5,registration_number),is_active=COALESCE($6,is_active)
+ WHERE st.school_id=$1 AND st.id=$2 AND ($4::uuid IS NULL OR EXISTS(SELECT 1 FROM classes c WHERE c.school_id=$1 AND c.id=$4))
+ RETURNING id,full_name,class_id,registration_number,is_active`,[req.schoolId,id.data,d.fullName??null,d.classId??null,d.registrationNumber??null,d.isActive??null]);
+ if(!rows.length)return error(res,404,'Ardayga ama fasalka lama helin');res.json({student:rows[0]});
+}));
+adminRouter.patch('/staff/:userId/password',roles('school_admin'),wrap(async(req,res)=>{
+ const id=uuid.safeParse(req.params.userId),p=z.object({password:z.string().min(12).max(128)}).safeParse(req.body);
+ if(!id.success||!p.success)return error(res,400,'Password-ku waa inuu leeyahay 12 xaraf ama ka badan');
+ const hash=await bcrypt.hash(p.data.password,12);
+ const {rows}=await pool.query(`UPDATE users u SET password_hash=$3 WHERE u.id=$2
+ AND EXISTS(SELECT 1 FROM school_memberships m WHERE m.user_id=u.id AND m.school_id=$1 AND m.is_active=true)
+ AND u.is_platform_admin=false RETURNING u.id`,[req.schoolId,id.data,hash]);
+ if(!rows.length)return error(res,404,'Shaqaalaha lama helin');res.json({updated:true});
+}));
