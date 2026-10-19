@@ -1,3 +1,4 @@
+import ExcelJS from 'exceljs';
 import crypto from 'node:crypto';
 import {Router} from 'express';
 import jwt from 'jsonwebtoken';
@@ -206,19 +207,47 @@ adminRouter.get('/students/export',roles('school_admin'),wrap(async(req,res)=>{
  const {rows}=await pool.query(`SELECT st.registration_number,st.full_name,c.name AS class_name,c.academic_year FROM students st JOIN classes c ON c.id=st.class_id AND c.school_id=st.school_id WHERE st.school_id=$1 ORDER BY st.registration_number`,[req.schoolId]);
  res.json({students:rows});
 }));
-const importSchema=z.object({students:z.array(z.object({registrationNumber:z.string().trim().min(1).max(100),fullName:z.string().trim().min(1).max(200),classId:uuid})).min(1).max(500)});
-adminRouter.post('/students/import',roles('school_admin'),wrap(async(req,res)=>{
- const p=importSchema.safeParse(req.body);if(!p.success)return error(res,400,'Faylka ardayda sax ma aha (ugu badnaan 500)');
- const unique=new Set(p.data.students.map(s=>s.registrationNumber));if(unique.size!==p.data.students.length)return error(res,400,'Reg-Number isku mid ah ayaa faylka ku jira');
+const bulkRows=z.array(z.object({registrationNumber:z.string().trim().min(1).max(100),fullName:z.string().trim().min(1).max(200),classId:uuid})).min(1).max(500);
+async function importStudents(schoolId,students){
+ const unique=new Set(students.map(s=>s.registrationNumber));if(unique.size!==students.length)throw new Error('Reg-Number isku mid ah ayaa faylka ku jira');
  const client=await pool.connect();
- try{await client.query('BEGIN');let added=0;
- for(const st of p.data.students){
+ try{await client.query('BEGIN');
+ for(const st of students){
   const result=await client.query(`INSERT INTO students(school_id,class_id,registration_number,full_name,result_pin_hash)
  SELECT c.school_id,c.id,$3,$4,$5 FROM classes c WHERE c.school_id=$1 AND c.id=$2
- ON CONFLICT(school_id,registration_number) DO NOTHING RETURNING id`,[req.schoolId,st.classId,st.registrationNumber,st.fullName,await bcrypt.hash(crypto.randomUUID(),12)]);
+ ON CONFLICT(school_id,registration_number) DO NOTHING RETURNING id`,[schoolId,st.classId,st.registrationNumber,st.fullName,await bcrypt.hash(crypto.randomUUID(),12)]);
   if(!result.rowCount)throw new Error('Fasal aan jirin ama Reg-Number hore loo isticmaalay: '+st.registrationNumber);
-  added++;
  }
- await client.query('COMMIT');res.status(201).json({added});
- }catch(e){await client.query('ROLLBACK');return error(res,409,e.message)}finally{client.release()}
+ await client.query('COMMIT');return students.length;
+ }catch(e){await client.query('ROLLBACK');throw e}finally{client.release()}
+}
+adminRouter.get('/students/export.xlsx',roles('school_admin'),wrap(async(req,res)=>{
+ const {rows}=await pool.query('SELECT st.registration_number,st.full_name,st.class_id FROM students st WHERE st.school_id=$1 ORDER BY st.registration_number',[req.schoolId]);
+ const wb=new ExcelJS.Workbook();const ws=wb.addWorksheet('Ardayda');
+ ws.columns=[{header:'registrationNumber',key:'registration_number',width:24},{header:'fullName',key:'full_name',width:40},{header:'classId',key:'class_id',width:40}];
+ ws.addRows(rows);ws.getRow(1).font={bold:true};const buffer=await wb.xlsx.writeBuffer();
+ res.set('Content-Type','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+ res.set('Content-Disposition','attachment; filename="aqoonhub-students.xlsx"');res.send(Buffer.from(buffer));
+}));
+adminRouter.post('/students/import.xlsx',roles('school_admin'),wrap(async(req,res)=>{
+ if(!Buffer.isBuffer(req.body)||req.body.length<10||req.body.length>2*1024*1024)return error(res,400,'Faylka Excel sax ma aha (ugu badnaan 2 MB)');
+ let workbook;
+ try{workbook=new ExcelJS.Workbook();await workbook.xlsx.load(req.body)}catch{return error(res,400,'Faylka .xlsx ma furmayo')}
+ const sheet=workbook.worksheets[0];if(!sheet)return error(res,400,'Excel sheet ma jiro');
+ const headers=[1,2,3].map(i=>String(sheet.getRow(1).getCell(i).text||'').trim());
+ if(headers.join('|')!=='registrationNumber|fullName|classId')return error(res,400,'Excel columns waa inay noqdaan registrationNumber, fullName, classId');
+ const students=[];for(let row=2;row<=sheet.rowCount;row++){
+ const r=sheet.getRow(row);if([1,2,3].every(i=>!r.getCell(i).text.trim()))continue;
+ students.push({registrationNumber:r.getCell(1).text.trim(),fullName:r.getCell(2).text.trim(),classId:r.getCell(3).text.trim()});
+ if(students.length>500)return error(res,400,'Hal mar ugu badnaan 500 arday');
+ }
+ const parsed=bulkRows.safeParse(students);if(!parsed.success)return error(res,400,'Xogta Excel sax ma aha');
+ try{const added=await importStudents(req.schoolId,parsed.data);res.status(201).json({added})}
+ catch(e){return error(res,409,e.message)}
+}));
+const importSchema=z.object({students:bulkRows});
+adminRouter.post('/students/import',roles('school_admin'),wrap(async(req,res)=>{
+ const p=importSchema.safeParse(req.body);if(!p.success)return error(res,400,'Faylka ardayda sax ma aha (ugu badnaan 500)');
+ try{const added=await importStudents(req.schoolId,p.data.students);res.status(201).json({added})}
+ catch(e){return error(res,409,e.message)}
 }));
