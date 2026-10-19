@@ -117,7 +117,7 @@ const feeInput=z.object({studentId:uuid,amount:z.number().positive().max(9999999
 adminRouter.get('/attendance',roles('school_admin','exam_officer','teacher'),wrap(async(req,res)=>{
  const date=z.string().regex(/^\d{4}-\d{2}-\d{2}$/).safeParse(req.query.date);
  if(!date.success)return error(res,400,'Taariikh sax ah ayaa loo baahan yahay');
- const {rows}=await pool.query('SELECT a.student_id,a.attendance_date,a.status,st.full_name FROM attendance a JOIN students st ON st.school_id=a.school_id AND st.id=a.student_id WHERE a.school_id=$1 AND a.attendance_date=$2 AND ($3 <> 'teacher' OR st.class_id IN (SELECT class_id FROM teacher_assignments WHERE school_id=$1 AND teacher_id=$4)) ORDER BY st.full_name LIMIT 500',[req.schoolId,date.data,req.role,req.userId]);
+ const {rows}=await pool.query(`SELECT a.student_id,a.attendance_date,a.status,st.full_name FROM attendance a JOIN students st ON st.school_id=a.school_id AND st.id=a.student_id WHERE a.school_id=$1 AND a.attendance_date=$2 AND ($3 <> 'teacher' OR st.class_id IN (SELECT class_id FROM teacher_assignments WHERE school_id=$1 AND teacher_id=$4)) ORDER BY st.full_name LIMIT 500`,[req.schoolId,date.data,req.role,req.userId]);
  res.json({attendance:rows});
 }));
 adminRouter.post('/attendance',roles('school_admin','exam_officer','teacher'),wrap(async(req,res)=>{
