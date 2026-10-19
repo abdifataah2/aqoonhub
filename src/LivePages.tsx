@@ -30,7 +30,7 @@ function useSchoolInfo(slug:string|undefined){
  return {school,error};
 }
 function Frame({school,title,subtitle,children}:{school:School|null;title:string;subtitle:string;children:React.ReactNode}){
- return <><header className="top"><div className="wrap top-inner"><Link to={school?`/s/${school.slug}`:'/'} className="brand"><span className="brand-icon" style={{background:school?.brand_color||'#2563eb'}}><GraduationCap size={24}/></span><span><b>{school?.name||'AqoonHub'}</b><small>Nidaamka Maamulka Iskuulka</small></span></Link><Link className="top-link" to={school?`/s/${school.slug}`:'/'}><ArrowLeft size={16}/> Dib u noqo</Link></div></header><main className="form-area"><div className="form-card"><h1>{title}</h1><p>{subtitle}</p>{children}</div></main><footer>© {new Date().getFullYear()} AqoonHub</footer></>;
+ return <><header className="top"><div className="wrap top-inner"><Link to={school?`/s/${school.slug}`:'/'} className="brand"><span className="brand-icon" style={{background:school?.brand_color||'#2563eb'}}><GraduationCap size={24}/></span><span><b>{school?.name||'Somskill'}</b><small>Nidaamka Maamulka Iskuulka</small></span></Link><Link className="top-link" to={school?`/s/${school.slug}`:'/'}><ArrowLeft size={16}/> Dib u noqo</Link></div></header><main className="form-area"><div className="form-card"><h1>{title}</h1><p>{subtitle}</p>{children}</div></main><footer>© {new Date().getFullYear()} Somskill</footer></>;
 }
 export function LiveLogin(){
  const {slug}=useParams();const {school,error:schoolError}=useSchoolInfo(slug);
