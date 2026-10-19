@@ -9,7 +9,7 @@ const suffix=randomUUID().slice(0,8);
 const a='ci-a-'+suffix,b='ci-b-'+suffix;
 const password='test-password-very-long';
 const hash=await bcrypt.hash(password,10);
-let schoolA,schoolB;
+let schoolA,schoolB,schoolC;
 const call=async(path,body,token)=>{
  const res=await fetch(origin+path,{method:'POST',headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:JSON.stringify(body)});
  return {status:res.status,data:await res.json()};
@@ -19,6 +19,16 @@ try{
  schoolA=created.rows.find(x=>x.slug===a).id;schoolB=created.rows.find(x=>x.slug===b).id;
  const user=(await pool.query("INSERT INTO users(email,password_hash,full_name) VALUES($1,$2,'Test Admin') RETURNING id",['ci-'+suffix+'@example.test',hash])).rows[0];
  await pool.query("INSERT INTO school_memberships(school_id,user_id,role) VALUES($1,$2,'school_admin')",[schoolA,user.id]);
+ const platformUser=(await pool.query("INSERT INTO users(email,password_hash,full_name,is_platform_admin) VALUES($1,$2,'Platform Tester',true) RETURNING id",['platform-'+suffix+'@example.test',hash])).rows[0];
+ const platformLogin=await call('/api/platform/login',{email:'platform-'+suffix+'@example.test',password});
+ assert.equal(platformLogin.status,200,'platform login works');
+ const deniedSchool=await call('/api/platform/schools',{name:'Blocked School',slug:'blocked-'+suffix,adminName:'Blocked',adminEmail:'blocked-'+suffix+'@example.test',adminPassword:password});
+ assert.equal(deniedSchool.status,401,'public cannot create schools');
+ const createdSchool=await call('/api/platform/schools',{name:'Test C',slug:'ci-c-'+suffix,adminName:'School C Admin',adminEmail:'ci-c-admin-'+suffix+'@example.test',adminPassword:password},platformLogin.data.token);
+ assert.equal(createdSchool.status,201,'platform admin creates school');
+ schoolC=createdSchool.data.school.id;
+ const schoolCLogin=await call('/api/schools/ci-c-'+suffix+'/login',{email:'ci-c-admin-'+suffix+'@example.test',password});
+ assert.equal(schoolCLogin.status,200,'new school admin can login');
  const login=await call('/api/schools/'+a+'/login',{email:'ci-'+suffix+'@example.test',password});
  assert.equal(login.status,200,'valid credentials should login');
  const token=login.data.token;
@@ -50,6 +60,14 @@ try{
 
  const student=await call('/api/schools/'+a+'/admin/students',{classId:klass.data.class.id,registrationNumber:'REG-'+suffix,fullName:'Test Student',resultPin:'12345678'},token);
  assert.equal(student.status,201,'student registration should work');
+ const subject=await call('/api/schools/'+a+'/admin/subjects',{name:'Math'},token);
+ assert.equal(subject.status,201);
+ const mapping=await call('/api/schools/'+a+'/admin/class-subjects',{classId:klass.data.class.id,subjectId:subject.data.subject.id},token);
+ assert.equal(mapping.status,201,'class subject assignment works');
+ const imported=await call('/api/schools/'+a+'/admin/students/import',{students:[{classId:klass.data.class.id,registrationNumber:'BULK-'+suffix,fullName:'Imported Student'}]},token);
+ assert.equal(imported.status,201,'bulk import works');
+ const studentLogin=await call('/api/schools/'+a+'/student-login',{registrationNumber:'BULK-'+suffix});
+ assert.equal(studentLogin.status,200,'registration-only access works');
  const attendance=await call('/api/schools/'+a+'/admin/attendance',{studentId:student.data.student.id,date:'2026-10-17',status:'present'},token);
  assert.equal(attendance.status,200,'attendance should be recorded');
  const attendanceList=await fetch(origin+'/api/schools/'+a+'/admin/attendance?date=2026-10-17',{headers:{Authorization:'Bearer '+token}});
@@ -67,6 +85,7 @@ try{
 }finally{
  if(schoolA)await pool.query('DELETE FROM schools WHERE id=$1',[schoolA]);
  if(schoolB)await pool.query('DELETE FROM schools WHERE id=$1',[schoolB]);
- await pool.query('DELETE FROM users WHERE email=ANY($1)',[['ci-'+suffix+'@example.test','staff-'+suffix+'@example.test']]);
+ if(schoolC)await pool.query('DELETE FROM schools WHERE id=$1',[schoolC]);
+ await pool.query('DELETE FROM users WHERE email=ANY($1)',[['ci-'+suffix+'@example.test','staff-'+suffix+'@example.test','platform-'+suffix+'@example.test','ci-c-admin-'+suffix+'@example.test']]);
  await pool.end();
 }
