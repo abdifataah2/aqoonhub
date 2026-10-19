@@ -1,6 +1,6 @@
-# AqoonHub — release checklist (October 2026)
+# Somskill — release checklist (October 2026)
 
-## Implemented on feature/aqoonhub-phase2
+## Implemented on feature/somskill-phase2
 - Platform administrator: create schools and school admins; no school self-registration.
 - School staff login with role-based access, classes, subjects, class-subject mappings and teacher assignments.
 - Student registration, bulk Excel .xlsx template/import/export (max 500 students).
