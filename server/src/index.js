@@ -89,6 +89,22 @@ app.post('/api/schools/:slug/results/verify',resultLimit,school,handler(async(re
  res.set('Cache-Control','no-store');
  res.json({student:{name:student.full_name,registrationNumber:registrationNumber},exams:[...grouped.values()]});
 }));
+app.post('/api/schools/:slug/student-login',resultLimit,school,handler(async(req,res)=>{
+ const p=z.object({registrationNumber:z.string().trim().min(1).max(100)}).safeParse(req.body);
+ if(!p.success)return fail(res,400,'Reg-Number sax ah geli');
+ const {rows}=await pool.query('SELECT id,full_name,registration_number,class_id FROM students WHERE school_id=$1 AND registration_number=$2 AND is_active=true',[req.school.id,p.data.registrationNumber]);
+ if(!rows.length)return fail(res,404,'Ardayga lama helin');
+ const student=rows[0];
+ const exams=await pool.query(`SELECT e.id,e.title,e.academic_year,sub.name AS subject,m.score,m.max_score
+ FROM exams e JOIN exam_marks m ON m.school_id=e.school_id AND m.exam_id=e.id AND m.student_id=$2
+ JOIN subjects sub ON sub.school_id=m.school_id AND sub.id=m.subject_id
+ WHERE e.school_id=$1 AND e.class_id=$3 AND e.status='published' AND e.published_at IS NOT NULL
+ ORDER BY e.published_at DESC,sub.name`,[req.school.id,student.id,student.class_id]);
+ const grouped=new Map();
+ for(const row of exams.rows){if(!grouped.has(row.id))grouped.set(row.id,{id:row.id,title:row.title,academicYear:row.academic_year,marks:[]});
+ grouped.get(row.id).marks.push({subject:row.subject,score:Number(row.score),maxScore:Number(row.max_score)});}
+ res.set('Cache-Control','no-store').json({student:{name:student.full_name,registrationNumber:student.registration_number},exams:[...grouped.values()]});
+}));
 app.use('/api/schools/:slug/admin',adminRouter);
 app.use('/api/platform',platformRouter);
 app.use((err,_req,res,_next)=>{console.error(err);fail(res,500,'Cilad server ayaa dhacday')});
