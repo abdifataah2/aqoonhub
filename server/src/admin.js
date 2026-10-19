@@ -114,19 +114,19 @@ adminRouter.post('/exams/:examId/publish',roles('school_admin','exam_officer'),w
 
 const attendanceInput=z.object({studentId:uuid,date:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),status:z.enum(['present','absent','late','excused'])});
 const feeInput=z.object({studentId:uuid,amount:z.number().positive().max(999999999),currency:z.enum(['USD','SOS']),reference:z.string().trim().min(1).max(120),paidOn:z.string().regex(/^\d{4}-\d{2}-\d{2}$/)});
-adminRouter.get('/attendance',roles('school_admin','exam_officer'),wrap(async(req,res)=>{
+adminRouter.get('/attendance',roles('school_admin','exam_officer','teacher'),wrap(async(req,res)=>{
  const date=z.string().regex(/^\d{4}-\d{2}-\d{2}$/).safeParse(req.query.date);
  if(!date.success)return error(res,400,'Taariikh sax ah ayaa loo baahan yahay');
- const {rows}=await pool.query('SELECT a.student_id,a.attendance_date,a.status,st.full_name FROM attendance a JOIN students st ON st.school_id=a.school_id AND st.id=a.student_id WHERE a.school_id=$1 AND a.attendance_date=$2 ORDER BY st.full_name LIMIT 500',[req.schoolId,date.data]);
+ const {rows}=await pool.query('SELECT a.student_id,a.attendance_date,a.status,st.full_name FROM attendance a JOIN students st ON st.school_id=a.school_id AND st.id=a.student_id WHERE a.school_id=$1 AND a.attendance_date=$2 AND ($3 <> 'teacher' OR st.class_id IN (SELECT class_id FROM teacher_assignments WHERE school_id=$1 AND teacher_id=$4)) ORDER BY st.full_name LIMIT 500',[req.schoolId,date.data,req.role,req.userId]);
  res.json({attendance:rows});
 }));
-adminRouter.post('/attendance',roles('school_admin','exam_officer'),wrap(async(req,res)=>{
+adminRouter.post('/attendance',roles('school_admin','exam_officer','teacher'),wrap(async(req,res)=>{
  const parsed=attendanceInput.safeParse(req.body);if(!parsed.success)return error(res,400,'Xogta xaadirinta sax ma aha');
  const {studentId,date,status}=parsed.data;
  const {rows}=await pool.query(`INSERT INTO attendance(school_id,student_id,attendance_date,status,recorded_by)
- SELECT st.school_id,st.id,$3,$4,$5 FROM students st WHERE st.school_id=$1 AND st.id=$2 AND st.is_active=true
+ SELECT st.school_id,st.id,$3,$4,$5 FROM students st WHERE st.school_id=$1 AND st.id=$2 AND st.is_active=true AND ($6 <> 'teacher' OR st.class_id IN (SELECT class_id FROM teacher_assignments WHERE school_id=$1 AND teacher_id=$5))
  ON CONFLICT(school_id,student_id,attendance_date) DO UPDATE SET status=EXCLUDED.status,recorded_by=EXCLUDED.recorded_by,updated_at=now()
- RETURNING student_id,attendance_date,status`,[req.schoolId,studentId,date,status,req.userId]);
+ RETURNING student_id,attendance_date,status`,[req.schoolId,studentId,date,status,req.userId,req.role]);
  if(!rows.length)return error(res,404,'Ardayga lama helin');
  res.json({attendance:rows[0]});
 }));
