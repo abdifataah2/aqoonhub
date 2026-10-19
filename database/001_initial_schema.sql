@@ -1,4 +1,4 @@
--- AqoonHub Phase 2: initial PostgreSQL schema.
+-- Somskill Phase 2: initial PostgreSQL schema.
 -- Apply only to a dedicated development database after review.
 -- Application queries MUST enforce school_id authorization server-side.
 -- This schema alone is NOT a production security boundary.
