@@ -1,3 +1,4 @@
+import {apiUrl} from './apiUrl';
 import {AdminDashboard} from './AdminDashboard';
 import React from 'react';
 import {Link,useParams} from 'react-router-dom';
@@ -10,7 +11,7 @@ type ResultReply={student:{name:string;registrationNumber:string};exams:Exam[]};
 const errorText=(err:unknown)=>err instanceof Error?err.message:'Cilad ayaa dhacday';
 async function request<T>(path:string,init?:RequestInit):Promise<T>{
  let response:Response;
- try{response=await fetch(path,{...init,headers:{'Content-Type':'application/json',...init?.headers},cache:'no-store'})}
+ try{response=await fetch(apiUrl(path),{...init,headers:{'Content-Type':'application/json',...init?.headers},cache:'no-store'})}
  catch{throw new Error('Server-ka lama xiriiri karo. Hubi in backend-ku shaqaynayo.')}
  const body=await response.json().catch(()=>({}));
  if(!response.ok)throw new Error(typeof body.error==='string'?body.error:'Codsigu ma guulaysan');
