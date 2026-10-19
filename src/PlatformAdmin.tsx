@@ -1,3 +1,4 @@
+import {apiUrl} from './apiUrl';
 import React from 'react';
 import {Link} from 'react-router-dom';
 type School={id:string;slug:string;name:string;is_active:boolean;staff_count:number};
@@ -6,7 +7,7 @@ export function PlatformAdmin(){
  const [token,setToken]=React.useState(''),[schools,setSchools]=React.useState<School[]>([]);
  const [name,setName]=React.useState(''),[slug,setSlug]=React.useState(''),[adminName,setAdminName]=React.useState(''),[adminEmail,setAdminEmail]=React.useState(''),[adminPassword,setAdminPassword]=React.useState('');
  const [message,setMessage]=React.useState(''),[busy,setBusy]=React.useState(false);
- async function call(path:string,body?:object,auth?:string,method?:string){const r=await fetch('/api/platform'+path,{method:method||(body?'POST':'GET'),headers:{'Content-Type':'application/json',...(auth?{Authorization:'Bearer '+auth}:{})},body:body?JSON.stringify(body):undefined});const data=await r.json();if(!r.ok)throw new Error(data.error||'Codsiga wuu fashilmay');return data}
+ async function call(path:string,body?:object,auth?:string,method?:string){const r=await fetch(apiUrl('/api/platform'+path),{method:method||(body?'POST':'GET'),headers:{'Content-Type':'application/json',...(auth?{Authorization:'Bearer '+auth}:{})},body:body?JSON.stringify(body):undefined});const data=await r.json();if(!r.ok)throw new Error(data.error||'Codsiga wuu fashilmay');return data}
  async function refresh(auth:string){const data=await call('/schools',undefined,auth);setSchools(data.schools)}
  async function login(e:React.FormEvent){e.preventDefault();setBusy(true);setMessage('');try{const d=await call('/login',{email,password});setToken(d.token);setPassword('');await refresh(d.token)}catch(e){setMessage(e instanceof Error?e.message:'Cilad')}finally{setBusy(false)}}
  async function toggleSchool(id:string,isActive:boolean){setBusy(true);setMessage('');try{await call('/schools/'+id,{isActive},token,'PATCH');await refresh(token)}catch(e){setMessage(e instanceof Error?e.message:'Cilad')}finally{setBusy(false)}}
