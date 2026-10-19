@@ -106,6 +106,7 @@ app.post('/api/schools/:slug/student-login',resultLimit,school,handler(async(req
  grouped.get(row.id).marks.push({subject:row.subject,score:Number(row.score),maxScore:Number(row.max_score)});}
  res.set('Cache-Control','no-store').json({student:{name:student.full_name,registrationNumber:student.registration_number},exams:[...grouped.values()]});
 }));
+app.use('/api/schools/:slug/admin/staff/import.xlsx',express.raw({type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',limit:'2mb'}));
 app.use('/api/schools/:slug/admin/exams/:examId/marks/import.xlsx',express.raw({type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',limit:'2mb'}));
 app.use('/api/schools/:slug/admin/students/import.xlsx',express.raw({type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',limit:'2mb'}));
 app.use('/api/schools/:slug/admin',adminRouter);
