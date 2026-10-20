@@ -52,3 +52,21 @@ platformRouter.patch('/schools/:id',wrap(async(req,res)=>{
  if(!rows.length)return fail(res,404,'Iskuulka lama helin');
  res.json({school:rows[0]});
 }));
+
+platformRouter.post('/schools/:id/admins',wrap(async(req,res)=>{
+ const schoolId=z.string().uuid().safeParse(req.params.id);
+ const input=z.object({name:z.string().trim().min(2),email:z.string().email(),password:z.string().min(12)}).safeParse(req.body);
+ if(!schoolId.success||!input.success)return fail(res,400,'Xogta sax ma aha');
+ const d=input.data;
+ const hash=await bcrypt.hash(d.password,12);
+ const client=await pool.connect();
+ try{
+  await client.query('BEGIN');
+  const exists=await client.query('SELECT id FROM schools WHERE id=$1',[schoolId.data]);
+  if(!exists.rows.length){await client.query('ROLLBACK');return fail(res,404,'Iskuulka lama helin')}
+  const user=await client.query('INSERT INTO users(email,full_name,password_hash) VALUES(lower($1),$2,$3) RETURNING id',[d.email,d.name,hash]);
+  await client.query("INSERT INTO school_memberships(school_id,user_id,role) VALUES($1,$2,'school_admin')",[schoolId.data,user.rows[0].id]);
+  await client.query('COMMIT');
+  res.status(201).json({admin:{email:d.email,name:d.name}});
+ }catch(e){await client.query('ROLLBACK');if(e.code==='23505')return fail(res,409,'Email-kan hore ayaa loo isticmaalay');throw e}finally{client.release()}
+}));
