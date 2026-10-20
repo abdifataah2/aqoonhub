@@ -36,10 +36,11 @@ export function AdminDashboard({session,onLogout}:{session:LoginReply;onLogout:(
   return body;
  },[slug,session.token]);
  const refresh=React.useCallback(async()=>{
-  const [a,b,c,d,e]=await Promise.all([api('/summary'),api('/classes'),api('/students'),api('/subjects'),api('/exams')]);
-  if(session.user.role==='school_admin'){const [staffReply,auditReply,feesReply]=await Promise.all([api('/staff'),api('/audit'),api('/fees')]);setStaff(staffReply.staff);setAudit(auditReply.events);setPayments(feesReply.payments)}
-  const [cs,ta]=await Promise.all([api('/class-subjects'),api('/teacher-assignments')]);setClassSubjects(cs.assignments);setTeacherAssignments(ta.assignments);
-  setData({summary:a.summary,classes:b.classes,students:c.students,subjects:d.subjects,exams:e.exams});
+  const load=async(path:string)=>{try{return await api(path)}catch(err){setError(prev=>[prev,`${path}: ${err instanceof Error?err.message:'Cilad'}`].filter(Boolean).join(' | '));return null}};
+  const [a,b,c,d,e]=await Promise.all([load('/summary'),load('/classes'),load('/students'),load('/subjects'),load('/exams')]);
+  if(session.user.role==='school_admin'){const [staffReply,auditReply,feesReply]=await Promise.all([load('/staff'),load('/audit'),load('/fees')]);setStaff(staffReply?.staff||[]);setAudit(auditReply?.events||[]);setPayments(feesReply?.payments||[])}
+  const [cs,ta]=await Promise.all([load('/class-subjects'),load('/teacher-assignments')]);setClassSubjects(cs?.assignments||[]);setTeacherAssignments(ta?.assignments||[]);
+  setData({summary:a?.summary||{students:0,classes:0,exams:0,teachers:0},classes:b?.classes||[],students:c?.students||[],subjects:d?.subjects||[],exams:e?.exams||[]});
  },[api,session.user.role]);
  React.useEffect(()=>{refresh().catch(e=>setError(e.message))},[refresh]);
  React.useEffect(()=>{if(section==='attendance'&&canExam)api('/attendance?date='+encodeURIComponent(date)).then(r=>setAttendance(r.attendance)).catch(e=>setError(e.message))},[section,date,canExam,api]);
