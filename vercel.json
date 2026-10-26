@@ -18,6 +18,20 @@
       }
     },
     {
+      "source": "/platform",
+      "destination": {
+        "service": "app",
+        "path": "/index.html"
+      }
+    },
+    {
+      "source": "/s/(.*)",
+      "destination": {
+        "service": "app",
+        "path": "/index.html"
+      }
+    },
+    {
       "source": "/(.*)",
       "destination": {
         "service": "app"
