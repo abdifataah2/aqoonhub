@@ -1,5 +1,8 @@
 node_modules/
 dist/
+dist-server/
+public/
+*.tsbuildinfo
 .env
 .env.*
 !.env.example

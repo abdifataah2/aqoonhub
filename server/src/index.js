@@ -112,4 +112,5 @@ app.use('/api/schools/:slug/admin/students/import.xlsx',express.raw({type:'appli
 app.use('/api/schools/:slug/admin',adminRouter);
 app.use('/api/platform',platformRouter);
 app.use((err,_req,res,_next)=>{console.error(err);fail(res,500,'Cilad server ayaa dhacday')});
-app.listen(Number(process.env.PORT||4000),()=>console.log('Somskill API listening'));
+if(process.env.VERCEL!=='1')app.listen(Number(process.env.PORT||4000),()=>console.log('Somskill API listening'));
+export default app;

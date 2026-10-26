@@ -15,24 +15,16 @@ cd ..
 ```
 If `git status` shows local edits, commit or stash them before pulling. Do not use `git reset --hard` or force-push.
 
-## Step 3 — Deploy
-Deploy the **frontend** on Vercel: import the GitHub repository, select root directory `.`, build command `npm run build`, output directory `dist`, framework Vite. SPA routing is configured in `vercel.json`.
+## Step 3 — Deploy frontend and API on Vercel
+Import the GitHub repository as a Vercel project with root directory `.`. `vercel.json` configures the Vite output (`dist`), SPA routes, and `/api/*` function routing. The API uses the server workspace dependencies, so Vercel installs the root npm workspaces.
 
-The backend is a **persistent Express/Node API with PostgreSQL**. Host it on a Node-capable platform with a managed PostgreSQL database; Vercel static frontend hosting alone will not make the API and database run.
+Connect a Neon PostgreSQL database to the project. In Vercel → **Settings → Environment Variables**, set:
+- `DATABASE_URL`: Neon pooled connection string (secret; use the `-pooler` hostname)
+- `JWT_SECRET`: unique random secret with at least 32 characters
 
-Frontend Vercel environment variable:
-- `VITE_API_URL=https://YOUR-BACKEND-HOST` (no trailing slash)
+Apply `database/001_initial_schema.sql`, then `002_attendance_fees.sql`, `003_audit_events.sql`, and `004_class_subjects.sql` in order using the Neon SQL Editor. Never put connection strings, JWT secrets, or real passwords in GitHub or chat.
 
-Backend environment variables:
-- `DATABASE_URL`: PostgreSQL connection string (secret)
-- `JWT_SECRET`: unique secret of at least 32 characters
-- `FRONTEND_ORIGIN`: exact public Vercel frontend origin, e.g. `https://somskill.vercel.app`
-- `PORT`: platform-assigned port where required
-- `SEED_PLATFORM_EMAIL` and `SEED_PLATFORM_PASSWORD`: only for initial platform admin seed
-
-Apply `database/001_initial_schema.sql` through `004_class_subjects.sql` in order, then run the server seed script. Never commit credentials or `.env` files.
-
-Verify the live backend `/api/health` endpoint, platform login, school creation, Excel imports, teacher assignments, publishing, and student results with test accounts.
+After the first deployment, verify `https://YOUR-PROJECT.vercel.app/api/health`, then test platform/school login, school creation, Excel imports, teacher assignments, publishing, and student results with test accounts. Vercel serves both the React frontend and the Express API on the same domain; `VITE_API_URL` should remain unset.
 
 ## Release safety
-Registration-number-only results are accessible to anyone who knows or guesses a student's registration number. Obtain school consent and implement stronger student verification before storing real student results. Backups, recovery tests, security review, and full browser E2E remain required for production.
+Registration-number-only login is not strong identity verification; anyone who knows a student's registration number may access the student view. Obtain school consent and use the result PIN verification flow for private results. Configure Neon backups and recovery tests before using real student data.
