@@ -18,7 +18,7 @@ Mashruucan waxa ku jira React frontend iyo Express API ku xiran PostgreSQL. Qaar
 - `/s/al-maqaasid/demo` — admin dashboard demo (ma aha private)
 
 ## Vercel deployment
-Vercel waxa uu u adeegaa Vite frontend-ka, `/api/*`-na waxa uu u diraa Express Function-ka. Ku xidh GitHub repository-ga adigoo root directory ka dhigaya `.` iyo Neon PostgreSQL. Vercel environment variables ku dar `DATABASE_URL` (Neon pooled URL) iyo `JWT_SECRET` random ah oo ugu yaraan 32 xaraf ah.
+Vercel waxa uu ku wada daabacaa Vite frontend-ka iyo Express API-ga hal multi-service project; `/api/*` wuxuu aadaa API-ga. Ku xidh GitHub repository-ga iyo Neon PostgreSQL. Vercel environment variables ku dar `DATABASE_URL` (Neon pooled URL) iyo `JWT_SECRET` random ah oo ugu yaraan 32 xaraf ah.
 
 Ka hor inta aan API-ga la isticmaalin, Neon SQL Editor ku mari `database/001_initial_schema.sql` ilaa `database/004_class_subjects.sql` si ay u kala horreeyaan. Ha commit-gareyn secrets, hana ku qorin chat-ka. Tilmaamaha deployment-ka iyo release checks-ka ka eeg [SOMSKILL_DEPLOY.md](./SOMSKILL_DEPLOY.md).
 
